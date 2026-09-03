@@ -1,0 +1,9 @@
+[project]
+name = "verifiable-agent-control-plane"
+version = "0.1.0"
+description = "Dependency-free reference for fail-closed agent execution and receipt-bound state transitions."
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
