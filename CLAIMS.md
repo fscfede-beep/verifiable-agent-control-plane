@@ -5,7 +5,7 @@
 - Python: 3.12.10
 - `python -m pip wheel . --no-deps --wheel-dir dist`: PASS
 - wheel: `verifiable_agent_control_plane-0.2.0-py3-none-any.whl`
-- wheel SHA-256: `5BE1956BF565D4D1AF12CF15B2C335A9B321BDAAEA8BFE68CC8B4A5C749791BE`
+- bit-for-bit wheel reproducibility: NOT CLAIMED
 - `python -m pip install .`: PASS
 - `python -m unittest discover -s tests -v`: 16/16 PASS
 - installed import from outside the repository checkout: PASS
@@ -17,14 +17,20 @@
 
 The build backend uses setuptools through the standard `[build-system]` interface. That is a build dependency, not a runtime dependency.
 
+Wheel archive digests are not treated as a reproducible-build invariant in this repository. A release asset may carry a SHA-256 checksum for the exact uploaded file, but rebuilding the same commit is not claimed to reproduce identical wheel bytes.
+
 ## Public GitHub Actions evidence
 
 Published release `v0.1.0` is tagged at `848ceedbcb4e92ca2290f99b16e29421385f9b75`.
 
-- release-tag workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33803306325
+- v0.1.0 release-tag workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33803306325
 - Python 3.11 / 3.12 / 3.13 matrix: all `SUCCESS`
 
-The 0.2.0 packaging changes must independently pass the same public matrix before promotion or release.
+The 0.2.0 packaging implementation is commit `78e477d7650cb68ebc8b14181b7abdfc162d35b9`.
+
+- branch workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33804678428 — `SUCCESS`
+- promoted `main` workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33804764197 — `SUCCESS`
+- Python 3.11 / 3.12 / 3.13: source installation, 16-test suite, and outside-checkout import verification all `SUCCESS`
 
 ## What the tests prove
 
