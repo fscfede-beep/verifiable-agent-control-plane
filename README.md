@@ -1,8 +1,16 @@
 # Verifiable Agent Control Plane
 
+[![test](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/workflows/test.yml)
+
 A small, dependency-free reference implementation for **fail-closed agent execution with explicit authority, deterministic revalidation, effect readback, and hash-bound receipts**.
 
 This repository is a new, sanitized reference extraction of reliability patterns I use in larger agent systems. It is **not** a dump of a private production control plane, and it does not contain credentials, private state, provider IDs, or proprietary deployment configuration.
+
+## Public verification
+
+The public `test` workflow runs the unit suite on Python **3.11, 3.12, and 3.13**. The publication baseline completed successfully across all three matrix jobs in [GitHub Actions run #1](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33769915677).
+
+Local publication-candidate checks and the exact claim boundary are recorded in [`CLAIMS.md`](CLAIMS.md).
 
 ## Why this exists
 
@@ -121,7 +129,7 @@ The point is narrower: make authority and effect verification **observable, test
 
 ## Related public engineering work
 
-- OpenAI Codex issue #42367 — root-cause analysis + public reference implementation:
+- OpenAI Codex issue #42367 — independent revalidation + public reference implementation:
   https://github.com/openai/codex/issues/42367
 - OpenAI Agents SDK issues #4747 and #4749 — async resource ownership / cancellation boundaries:
   https://github.com/openai/openai-agents-python/issues/4747

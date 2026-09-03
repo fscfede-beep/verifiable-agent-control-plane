@@ -10,6 +10,16 @@
 - external network calls in the implementation: 0
 - credential reads: 0
 
+## Verified on public GitHub Actions
+
+- Workflow: `test`
+- Publication baseline: `471cd3b07754dffd16d702f28674c3f3bc78983b`
+- Run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33769915677
+- Matrix jobs: Python 3.11 / 3.12 / 3.13 — all `SUCCESS`
+- In every matrix job, `python -m unittest discover -s tests -v` completed successfully.
+
+This evidence applies to the public reference implementation and its test suite; it does not extend the claim boundary below.
+
 ## What the tests prove
 
 The test suite proves the behavior of this small reference implementation:
