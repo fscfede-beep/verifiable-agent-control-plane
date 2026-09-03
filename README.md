@@ -2,15 +2,15 @@
 
 [![test](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/workflows/test.yml)
 
-A small, dependency-free reference implementation for **fail-closed agent execution with explicit authority, deterministic revalidation, effect readback, and hash-bound receipts**.
+A small, runtime-dependency-free Python reference implementation for **fail-closed agent execution with explicit authority, deterministic revalidation, effect readback, and hash-bound receipts**.
 
 This repository is a new, sanitized reference extraction of reliability patterns I use in larger agent systems. It is **not** a dump of a private production control plane, and it does not contain credentials, private state, provider IDs, or proprietary deployment configuration.
 
 ## Public verification
 
-The public `test` workflow runs the unit suite on Python **3.11, 3.12, and 3.13**. The publication baseline completed successfully across all three matrix jobs in [GitHub Actions run #1](https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33769915677).
+The public `test` workflow installs the project from source, runs the unit suite on Python **3.11, 3.12, and 3.13**, and verifies the installed import surface outside the repository checkout.
 
-Local publication-candidate checks and the exact claim boundary are recorded in [`CLAIMS.md`](CLAIMS.md).
+Stable release evidence and the exact local/public claim boundary are recorded in [`CLAIMS.md`](CLAIMS.md). Packaging changes are not promoted or released until the public matrix passes on the exact candidate SHA.
 
 ## Why this exists
 
@@ -53,11 +53,26 @@ VERIFICATION / PROMOTION
 - **Hash-bound receipt chain.** Each receipt binds intent, prior state, next state, effect, and previous receipt hash.
 - **Verification before promotion.** Tampered receipts or inconsistent transitions are rejected.
 
-## Run the tests
+## Install from source
 
-Requires only Python 3.11+.
+Requires Python 3.11+.
 
 ```bash
+python -m pip install .
+```
+
+Then import the public package as:
+
+```python
+import verifiable_agent_control_plane
+```
+
+The legacy top-level import `verifiable_control_plane` remains as a compatibility shim. This project is installable from source but is **not published to PyPI**.
+
+## Run the tests
+
+```bash
+python -m pip install .
 python -m unittest discover -s tests -v
 ```
 
@@ -80,7 +95,7 @@ The suite covers:
 ## Minimal example
 
 ```python
-from src.verifiable_control_plane import (
+from verifiable_agent_control_plane import (
     CanonicalState, Intent, Policy, InMemoryTarget,
     decide, materialize, verify_transition,
 )

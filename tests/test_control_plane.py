@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from src.verifiable_control_plane import (
+from verifiable_agent_control_plane import (
     CanonicalState,
     ControlPlaneError,
     Decision,
