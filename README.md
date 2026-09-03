@@ -69,6 +69,10 @@ import verifiable_agent_control_plane
 
 The legacy top-level import `verifiable_control_plane` remains as a compatibility shim. This project is installable from source but is **not published to PyPI**.
 
+## Latest release
+
+[`v0.2.0`](https://github.com/fscfede-beep/verifiable-agent-control-plane/releases/tag/v0.2.0) provides the installable reference package plus a wheel asset and `SHA256SUMS.txt` for the exact uploaded file. Bit-for-bit wheel rebuild reproducibility is not claimed.
+
 ## Run the tests
 
 ```bash

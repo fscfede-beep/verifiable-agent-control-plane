@@ -19,18 +19,21 @@ The build backend uses setuptools through the standard `[build-system]` interfac
 
 Wheel archive digests are not treated as a reproducible-build invariant in this repository. A release asset may carry a SHA-256 checksum for the exact uploaded file, but rebuilding the same commit is not claimed to reproduce identical wheel bytes.
 
-## Public GitHub Actions evidence
+## Published GitHub release evidence
 
-Published release `v0.1.0` is tagged at `848ceedbcb4e92ca2290f99b16e29421385f9b75`.
+Latest release `v0.2.0` is tagged at `ed3bb2684743376fdf2769ee378ca614c913e3d4`.
 
-- v0.1.0 release-tag workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33803306325
-- Python 3.11 / 3.12 / 3.13 matrix: all `SUCCESS`
-
-The 0.2.0 packaging implementation is commit `78e477d7650cb68ebc8b14181b7abdfc162d35b9`.
-
-- branch workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33804678428 — `SUCCESS`
-- promoted `main` workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33804764197 — `SUCCESS`
+- release: https://github.com/fscfede-beep/verifiable-agent-control-plane/releases/tag/v0.2.0
+- promoted `main` workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33805032228 — `SUCCESS`
+- release-tag workflow run: https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33805162344 — `SUCCESS`
 - Python 3.11 / 3.12 / 3.13: source installation, 16-test suite, and outside-checkout import verification all `SUCCESS`
+- uploaded wheel: `verifiable_agent_control_plane-0.2.0-py3-none-any.whl`
+- uploaded wheel SHA-256: `3632d8325c6306b60bbbfeebd43dd3153f4dce8d99c5cbcc4c57d0923a770781`
+- `SHA256SUMS.txt` is attached to identify the exact uploaded wheel
+
+The wheel checksum identifies the uploaded release asset only; bit-for-bit rebuild reproducibility is not claimed.
+
+Historical release `v0.1.0` remains tagged at `848ceedbcb4e92ca2290f99b16e29421385f9b75`, with release-tag workflow run https://github.com/fscfede-beep/verifiable-agent-control-plane/actions/runs/33803306325 passing the Python 3.11 / 3.12 / 3.13 matrix.
 
 ## What the tests prove
 
