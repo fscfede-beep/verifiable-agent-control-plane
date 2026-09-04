@@ -608,7 +608,8 @@ class AgentSecurityTests(unittest.TestCase):
     def test_s15_self_verification_is_rejected(self):
         base = self._grant(approval_required=True)
         anchor = ApprovalAnchor(
-            "user-a", "tenant-1", "set_value", self.intent.digest, "self-check"
+            "user-a", "tenant-1", "set_value", self.intent.digest, "self-check",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -654,6 +655,7 @@ class AgentSecurityTests(unittest.TestCase):
         anchor = ApprovalAnchor(
             "reviewer-a", "tenant-1", "set_value",
             self.intent.digest, "independent-check",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -674,6 +676,7 @@ class AgentSecurityTests(unittest.TestCase):
         anchor = ApprovalAnchor(
             "service-agent", "tenant-1", "set_value",
             self.intent.digest, "executor-check",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -709,6 +712,7 @@ class AgentSecurityTests(unittest.TestCase):
         anchor = ApprovalAnchor(
             "reviewer-a", "tenant-1", "set_value",
             "different-intent-digest", "reviewer-check",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -729,6 +733,7 @@ class AgentSecurityTests(unittest.TestCase):
         anchor = ApprovalAnchor(
             "reviewer-a", "tenant-1", "other_action",
             self.intent.digest, "reviewer-check",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -743,6 +748,120 @@ class AgentSecurityTests(unittest.TestCase):
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
         self.assertEqual(decision.reason, "approval evidence not anchored")
+
+
+    def test_s21_approval_anchor_cannot_replay_across_requesters(self):
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"),
+                ActionGrant("user-b", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"),
+            ),
+            approval_required_actions=frozenset({"set_value"}),
+            approval_anchors=(
+                ApprovalAnchor(
+                    "reviewer-a", "tenant-1", "set_value",
+                    self.intent.digest, "reviewer-check",
+                ),
+            ),
+        )
+        requester = Principal("user-b", "human", "tenant-1")
+        delegation = Delegation(
+            "delegation-user-b", "user-b", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-1", delegate_tenant_id="tenant-1",
+        )
+        approval = ApprovalEvidence(
+            "approval-user-b", self.intent.digest, "user-b", "set_value",
+            True, "reviewer-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=self.executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+            approval=approval,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+    def test_s22_approval_anchor_cannot_replay_across_requester_tenants(self):
+        requester = Principal("user-a", "human", "tenant-2")
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-2"),
+            ),
+            approval_required_actions=frozenset({"set_value"}),
+            approval_anchors=(
+                ApprovalAnchor(
+                    "reviewer-a", "tenant-1", "set_value",
+                    self.intent.digest, "reviewer-check",
+                ),
+            ),
+        )
+        delegation = Delegation(
+            "delegation-tenant-2", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-2", delegate_tenant_id="tenant-1",
+        )
+        approval = ApprovalEvidence(
+            "approval-tenant-2", self.intent.digest, "user-a", "set_value",
+            True, "reviewer-check", tenant_id="tenant-2",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=self.executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+            approval=approval,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+
+    def test_unbound_approval_anchor_fails_closed(self):
+        base = self._grant(approval_required=True)
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(
+                ApprovalAnchor(
+                    "reviewer-a", "tenant-1", "set_value",
+                    self.intent.digest, "legacy-unbound-check",
+                ),
+            ),
+        )
+        approval = ApprovalEvidence(
+            "approval-unbound-anchor", self.intent.digest, "user-a", "set_value",
+            True, "legacy-unbound-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+
+    def test_approval_anchor_model_exposes_requester_binding(self):
+        from inspect import signature
+
+        params = signature(ApprovalAnchor).parameters
+        self.assertIn("requester_principal_id", params)
+        self.assertIn("requester_tenant_id", params)
+
+    def test_security_policy_digest_is_order_independent_across_requester_anchors(self):
+        anchor_a = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value", self.intent.digest, "check-a",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        )
+        anchor_b = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value", self.intent.digest, "check-b",
+            requester_principal_id="user-b", requester_tenant_id="tenant-1",
+        )
+        grant = ActionGrant(
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"
+        )
+        first = SecurityPolicy((grant,), approval_anchors=(anchor_a, anchor_b))
+        reversed_order = SecurityPolicy((grant,), approval_anchors=(anchor_b, anchor_a))
+        self.assertEqual(first.digest, reversed_order.digest)
 
 
 if __name__ == "__main__":
