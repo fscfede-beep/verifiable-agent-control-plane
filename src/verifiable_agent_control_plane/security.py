@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-import json
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from .core import (
     CanonicalState,
@@ -205,7 +206,7 @@ class SecurityReceipt:
         *,
         core_receipt: Receipt,
         security_decision: SecurityDecision,
-    ) -> "SecurityReceipt":
+    ) -> SecurityReceipt:
         base = {
             "core_receipt_hash": core_receipt.receipt_hash,
             "intent_digest": security_decision.intent_digest,
