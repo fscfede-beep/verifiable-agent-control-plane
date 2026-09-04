@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 from typing import Any
 
@@ -420,6 +420,8 @@ def secure_materialize(
 ) -> tuple[CanonicalState, Receipt, SecurityReceipt, EffectResult]:
     if not security_decision.accepted:
         raise ControlPlaneError("rejected security decision cannot materialize")
+    if evaluation_epoch < security_decision.evaluation_epoch:
+        raise ControlPlaneError("security evaluation epoch rollback")
 
     current_security_decision = evaluate_security(
         intent=intent,
@@ -437,7 +439,11 @@ def secure_materialize(
         raise ControlPlaneError(
             f"security context no longer accepted: {current_security_decision.reason}"
         )
-    if current_security_decision != security_decision:
+    comparable_current_decision = replace(
+        current_security_decision,
+        evaluation_epoch=security_decision.evaluation_epoch,
+    )
+    if comparable_current_decision != security_decision:
         raise ControlPlaneError("security context drift after decision")
 
     next_state, core_receipt, effect = materialize(
