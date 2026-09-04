@@ -159,3 +159,5 @@ The point is narrower: make authority and effect verification **observable, test
 ## Author
 
 Sebastián — AI Systems & Agent Reliability Engineer · Founder, RUMBO IA
+
+RUMBO public surfaces: [rumbo.verso.fans](https://rumbo.verso.fans/) · [@RumboAGI on X](https://x.com/RumboAGI)
