@@ -373,5 +373,18 @@ class AgentSecurityTests(unittest.TestCase):
             )
 
 
+    def test_empty_requested_resources_fail_closed(self):
+        decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=self._delegation(),
+            policy=self._grant(),
+            state=self.state,
+            requested_resources=frozenset(),
+            evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "resource scope required")
 if __name__ == "__main__":
     unittest.main()
