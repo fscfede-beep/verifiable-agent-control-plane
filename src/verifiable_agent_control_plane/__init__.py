@@ -1,4 +1,4 @@
-﻿"""Public import surface for the Verifiable Agent Control Plane reference implementation."""
+"""Public import surface for the Verifiable Agent Control Plane reference implementation."""
 
 from .core import (
     CanonicalState,
