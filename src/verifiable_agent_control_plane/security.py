@@ -272,6 +272,9 @@ def evaluate_security(
             reason=reason,
         )
 
+    if not requested_resources:
+        return result(False, "resource scope required")
+
     grants = tuple(
         grant
         for grant in policy.grants
