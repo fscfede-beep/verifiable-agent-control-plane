@@ -63,6 +63,41 @@ class Delegation:
 
 
 @dataclass(frozen=True)
+class ContextArtifact:
+    artifact_id: str
+    source_type: str
+    source_id: str
+    trust_class: str
+    content_digest: str
+
+    @property
+    def digest(self) -> str:
+        return _hash(
+            {
+                "artifact_id": self.artifact_id,
+                "source_type": self.source_type,
+                "source_id": self.source_id,
+                "trust_class": self.trust_class,
+                "content_digest": self.content_digest,
+            }
+        )
+
+
+def _provenance_digest(artifacts: tuple[ContextArtifact, ...]) -> str:
+    normalized = sorted(
+        (
+            {
+                "artifact_id": artifact.artifact_id,
+                "artifact_digest": artifact.digest,
+            }
+            for artifact in artifacts
+        ),
+        key=lambda item: (item["artifact_id"], item["artifact_digest"]),
+    )
+    return _hash(normalized)
+
+
+@dataclass(frozen=True)
 class ActionGrant:
     principal_id: str
     action: str
@@ -103,6 +138,7 @@ class SecurityDecision:
     delegation_digest: str
     policy_digest: str
     requested_resources_digest: str
+    provenance_digest: str
     evaluation_epoch: int
     accepted: bool
     reason: str
@@ -118,6 +154,7 @@ def evaluate_security(
     state: CanonicalState,
     requested_resources: frozenset[str],
     evaluation_epoch: int,
+    artifacts: tuple[ContextArtifact, ...] = (),
 ) -> SecurityDecision:
     def result(accepted: bool, reason: str) -> SecurityDecision:
         return SecurityDecision(
@@ -129,6 +166,7 @@ def evaluate_security(
             delegation_digest=delegation.digest,
             policy_digest=policy.digest,
             requested_resources_digest=_resource_digest(requested_resources),
+            provenance_digest=_provenance_digest(artifacts),
             evaluation_epoch=evaluation_epoch,
             accepted=accepted,
             reason=reason,
