@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 
 import verifiable_agent_control_plane as package
 import verifiable_control_plane as legacy

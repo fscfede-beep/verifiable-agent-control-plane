@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from dataclasses import replace
 
 from verifiable_agent_control_plane import (

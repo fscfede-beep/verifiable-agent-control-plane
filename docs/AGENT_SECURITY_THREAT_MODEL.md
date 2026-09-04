@@ -1,4 +1,4 @@
-﻿# Agent Security Threat Model
+# Agent Security Threat Model
 
 This document describes the defensive, synthetic threat model for the optional agent-security evaluation layer in this repository.
 

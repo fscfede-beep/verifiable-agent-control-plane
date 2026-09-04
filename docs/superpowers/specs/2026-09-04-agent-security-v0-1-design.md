@@ -1,4 +1,4 @@
-﻿# RUMBO Agent Security Lab V0.1 — Design
+# RUMBO Agent Security Lab V0.1 — Design
 
 Date: 2026-09-04
 
