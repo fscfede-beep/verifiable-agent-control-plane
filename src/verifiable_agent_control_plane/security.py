@@ -164,14 +164,18 @@ class ApprovalAnchor:
     action: str
     intent_digest: str
     verification_digest: str
+    requester_principal_id: str | None = None
+    requester_tenant_id: str | None = None
 
-    def payload(self) -> dict[str, str]:
+    def payload(self) -> dict[str, str | None]:
         return {
             "verifier_principal_id": self.verifier_principal_id,
             "verifier_tenant_id": self.verifier_tenant_id,
             "action": self.action,
             "intent_digest": self.intent_digest,
             "verification_digest": self.verification_digest,
+            "requester_principal_id": self.requester_principal_id,
+            "requester_tenant_id": self.requester_tenant_id,
         }
 
 
@@ -200,6 +204,8 @@ class SecurityPolicy:
                 item["action"],
                 item["intent_digest"],
                 item["verification_digest"],
+                item["requester_principal_id"] or "",
+                item["requester_tenant_id"] or "",
             ),
         )
         return _hash(
@@ -386,6 +392,8 @@ def evaluate_security(
             action=approval.action,
             intent_digest=approval.intent_digest,
             verification_digest=approval.verification_digest,
+            requester_principal_id=requester.principal_id,
+            requester_tenant_id=requester.tenant_id,
         )
         if expected_anchor not in policy.approval_anchors:
             return result(False, "approval evidence not anchored")
