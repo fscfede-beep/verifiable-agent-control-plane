@@ -1,4 +1,4 @@
-"""Public import surface for the Verifiable Agent Control Plane reference implementation."""
+﻿"""Public import surface for the Verifiable Agent Control Plane reference implementation."""
 
 from .core import (
     CanonicalState,
@@ -14,18 +14,42 @@ from .core import (
     validate_intent,
     verify_transition,
 )
+from .security import (
+    ActionGrant,
+    ApprovalEvidence,
+    ContextArtifact,
+    Delegation,
+    Principal,
+    SecurityDecision,
+    SecurityPolicy,
+    SecurityReceipt,
+    evaluate_security,
+    secure_materialize,
+    verify_security_transition,
+)
 
 __all__ = [
+    "ActionGrant",
+    "ApprovalEvidence",
     "CanonicalState",
+    "ContextArtifact",
     "ControlPlaneError",
     "Decision",
+    "Delegation",
     "EffectResult",
     "InMemoryTarget",
     "Intent",
     "Policy",
+    "Principal",
     "Receipt",
+    "SecurityDecision",
+    "SecurityPolicy",
+    "SecurityReceipt",
     "decide",
+    "evaluate_security",
     "materialize",
+    "secure_materialize",
     "validate_intent",
+    "verify_security_transition",
     "verify_transition",
 ]
