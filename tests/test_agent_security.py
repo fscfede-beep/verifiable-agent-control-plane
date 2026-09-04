@@ -39,7 +39,7 @@ class AgentSecurityTests(unittest.TestCase):
 
     def _grant(self, resources=frozenset({"record:a"}), approval_required=False):
         return SecurityPolicy(
-            grants=(ActionGrant("user-a", "set_value", resources),),
+            grants=(ActionGrant("user-a", "set_value", resources, tenant_id="tenant-1"),),
             approval_required_actions=(
                 frozenset({"set_value"}) if approval_required else frozenset()
             ),
@@ -54,6 +54,8 @@ class AgentSecurityTests(unittest.TestCase):
             resource_scope=resources,
             active=kwargs.get("active", True),
             expires_at_epoch=kwargs.get("expires_at_epoch"),
+            delegator_tenant_id=kwargs.get("delegator_tenant_id", "tenant-1"),
+            delegate_tenant_id=kwargs.get("delegate_tenant_id", "tenant-1"),
         )
 
     def _security_decision(
@@ -260,6 +262,7 @@ class AgentSecurityTests(unittest.TestCase):
             action="set_value",
             approved=True,
             verification_digest=None,
+            tenant_id="tenant-1",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -386,5 +389,206 @@ class AgentSecurityTests(unittest.TestCase):
         )
         self.assertFalse(decision.accepted)
         self.assertEqual(decision.reason, "resource scope required")
+
+    def test_s14_cross_tenant_executor_binding_collision_is_rejected(self):
+        requester = Principal("user-a", "human", "tenant-A")
+        executor = Principal("service-agent", "service", "tenant-B")
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a", "set_value", frozenset({"record:a"}),
+                    tenant_id="tenant-A",
+                ),
+            )
+        )
+        delegation = Delegation(
+            "delegation-wrong-executor-domain", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-A", delegate_tenant_id="tenant-C",
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "delegation executor tenant mismatch")
+
+    def test_s13_cross_tenant_approval_collision_is_rejected(self):
+        requester = Principal("user-a", "human", "tenant-B")
+        executor = Principal("service-agent", "service", "tenant-B")
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a", "set_value", frozenset({"record:a"}),
+                    tenant_id="tenant-B",
+                ),
+            ),
+            approval_required_actions=frozenset({"set_value"}),
+        )
+        delegation = Delegation(
+            "delegation-approval", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-B", delegate_tenant_id="tenant-B",
+        )
+        approval = ApprovalEvidence(
+            approval_id="approval-tenant-A",
+            intent_digest=self.intent.digest,
+            principal_id="user-a",
+            action="set_value",
+            approved=True,
+            verification_digest="independent-check",
+            tenant_id="tenant-A",
+        )
+
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+            approval=approval,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval tenant mismatch")
+
+    def test_s11_cross_tenant_grant_collision_is_rejected(self):
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a",
+                    "set_value",
+                    frozenset({"record:a"}),
+                    tenant_id="tenant-A",
+                ),
+            )
+        )
+        delegation = Delegation(
+            "delegation-cross-tenant",
+            "user-a",
+            "service-agent",
+            frozenset({"set_value"}),
+            frozenset({"record:a"}),
+            delegator_tenant_id="tenant-B",
+            delegate_tenant_id="tenant-B",
+        )
+        requester = Principal("user-a", "human", "tenant-B")
+        executor = Principal("service-agent", "service", "tenant-B")
+
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "principal tenant not permitted for action")
+
+    def test_s12_cross_tenant_delegation_collision_is_rejected(self):
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a",
+                    "set_value",
+                    frozenset({"record:a"}),
+                    tenant_id="tenant-B",
+                ),
+            )
+        )
+        delegation = Delegation(
+            "delegation-wrong-domain",
+            "user-a",
+            "service-agent",
+            frozenset({"set_value"}),
+            frozenset({"record:a"}),
+            delegator_tenant_id="tenant-A",
+            delegate_tenant_id="tenant-B",
+        )
+        requester = Principal("user-a", "human", "tenant-B")
+        executor = Principal("service-agent", "service", "tenant-B")
+
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "delegation requester tenant mismatch")
+
+    def test_unbound_grant_fails_closed(self):
+        policy = SecurityPolicy(
+            grants=(ActionGrant("user-a", "set_value", frozenset({"record:a"})),)
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=self.requester, executor=self.executor,
+            delegation=self._delegation(), policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "principal tenant not permitted for action")
+
+    def test_unbound_delegation_fails_closed(self):
+        delegation = Delegation(
+            "unbound-delegation", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=self.requester, executor=self.executor,
+            delegation=delegation, policy=self._grant(), state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "delegation requester tenant mismatch")
+
+    def test_unbound_approval_fails_closed(self):
+        policy = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            "unbound-approval", self.intent.digest, "user-a", "set_value",
+            True, "independent-check",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval tenant mismatch")
+
+    def test_explicit_cross_tenant_delegation_is_allowed_when_bound(self):
+        requester = Principal("user-a", "human", "tenant-A")
+        executor = Principal("service-agent", "service", "tenant-B")
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a", "set_value", frozenset({"record:a"}),
+                    tenant_id="tenant-A",
+                ),
+            )
+        )
+        delegation = Delegation(
+            "explicit-cross-tenant", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-A", delegate_tenant_id="tenant-B",
+        )
+        decision = evaluate_security(
+            intent=self.intent, requester=requester, executor=executor,
+            delegation=delegation, policy=policy, state=self.state,
+            requested_resources=frozenset({"record:a"}), evaluation_epoch=100,
+        )
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.reason, "accepted")
+
+    def test_security_policy_digest_is_order_independent_across_tenant_grants(self):
+        tenant_a = ActionGrant(
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-A"
+        )
+        tenant_b = ActionGrant(
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-B"
+        )
+        first = SecurityPolicy((tenant_a, tenant_b))
+        reversed_order = SecurityPolicy((tenant_b, tenant_a))
+        self.assertEqual(first.digest, reversed_order.digest)
+
+    def test_security_authority_models_expose_tenant_bindings(self):
+        from inspect import signature
+
+        self.assertIn("tenant_id", signature(ActionGrant).parameters)
+        self.assertIn("delegator_tenant_id", signature(Delegation).parameters)
+        self.assertIn("delegate_tenant_id", signature(Delegation).parameters)
+        self.assertIn("tenant_id", signature(ApprovalEvidence).parameters)
+
 if __name__ == "__main__":
     unittest.main()
