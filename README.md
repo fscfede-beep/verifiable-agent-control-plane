@@ -134,6 +134,15 @@ verify_transition(
 )
 ```
 
+## Agent security evaluation
+
+The candidate agent-security layer composes over the core control plane with explicit requester/executor identity, downscoped delegation, resource grants, deterministic context provenance, approval evidence for sensitive actions, pre-execution security revalidation, and security receipts bound to the core receipt.
+
+It is designed to make common agent/tool boundary failures reproducible with synthetic tests, including confused-deputy access, cross-principal reference grafting, untrusted MCP/tool metadata, agent-to-agent instruction carriers, delegation drift, action substitution, telemetry injection, weak approval evidence, metadata rug pulls, and cross-principal replay.
+
+See [`docs/AGENT_SECURITY_THREAT_MODEL.md`](docs/AGENT_SECURITY_THREAT_MODEL.md) for the threat model and explicit non-goals.
+
+This layer does **not** turn the project into a production security product and does not claim certification, third-party penetration testing, or complete protection against all agentic attacks.
 ## What this does *not* claim
 
 - No production deployment claim.
