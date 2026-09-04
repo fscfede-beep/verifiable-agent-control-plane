@@ -140,7 +140,7 @@ The agent-security layer composes over the core control plane with explicit requ
 
 It is designed to make common agent/tool boundary failures reproducible with synthetic tests, including confused-deputy access, cross-principal reference grafting, untrusted MCP/tool metadata, agent-to-agent instruction carriers, delegation drift, action substitution, telemetry injection, weak approval evidence, metadata rug pulls, cross-principal replay, and cross-tenant identity collisions.
 
-Authority artifacts are tenant-bound. Grants bind the requester tenant, delegations bind both delegator and delegate tenants, and approvals bind the approving requester tenant. Omitted tenant bindings are rejected fail-closed during evaluation; explicit cross-tenant delegation remains supported when both sides are bound to the supplied principals.
+Authority artifacts are tenant-bound. Grants bind the requester tenant, delegations bind both delegator and delegate tenants, and approvals bind the approving requester tenant. Omitted tenant bindings are rejected fail-closed during evaluation; explicit cross-tenant delegation remains supported when both sides are bound to the supplied principals. Approval-required actions additionally require a verifier identity distinct from both requester and executor plus an exact `ApprovalAnchor` in trusted policy binding verifier, tenant, action, intent digest, and verification digest. A non-empty digest or claimed verifier identity alone cannot authorize the action.
 
 See [`docs/AGENT_SECURITY_THREAT_MODEL.md`](docs/AGENT_SECURITY_THREAT_MODEL.md) for the threat model and explicit non-goals.
 

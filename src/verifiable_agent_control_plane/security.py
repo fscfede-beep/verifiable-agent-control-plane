@@ -137,6 +137,8 @@ class ApprovalEvidence:
     approved: bool
     verification_digest: str | None
     tenant_id: str | None = None
+    verifier_principal_id: str | None = None
+    verifier_tenant_id: str | None = None
 
     @property
     def digest(self) -> str:
@@ -149,14 +151,35 @@ class ApprovalEvidence:
                 "approved": self.approved,
                 "verification_digest": self.verification_digest,
                 "tenant_id": self.tenant_id,
+                "verifier_principal_id": self.verifier_principal_id,
+                "verifier_tenant_id": self.verifier_tenant_id,
             }
         )
+
+
+@dataclass(frozen=True)
+class ApprovalAnchor:
+    verifier_principal_id: str
+    verifier_tenant_id: str
+    action: str
+    intent_digest: str
+    verification_digest: str
+
+    def payload(self) -> dict[str, str]:
+        return {
+            "verifier_principal_id": self.verifier_principal_id,
+            "verifier_tenant_id": self.verifier_tenant_id,
+            "action": self.action,
+            "intent_digest": self.intent_digest,
+            "verification_digest": self.verification_digest,
+        }
 
 
 @dataclass(frozen=True)
 class SecurityPolicy:
     grants: tuple[ActionGrant, ...]
     approval_required_actions: frozenset[str] = frozenset()
+    approval_anchors: tuple[ApprovalAnchor, ...] = ()
 
     @property
     def digest(self) -> str:
@@ -169,10 +192,21 @@ class SecurityPolicy:
                 tuple(item["resource_scope"]),
             ),
         )
+        normalized_anchors = sorted(
+            (anchor.payload() for anchor in self.approval_anchors),
+            key=lambda item: (
+                item["verifier_principal_id"],
+                item["verifier_tenant_id"],
+                item["action"],
+                item["intent_digest"],
+                item["verification_digest"],
+            ),
+        )
         return _hash(
             {
                 "grants": normalized_grants,
                 "approval_required_actions": sorted(self.approval_required_actions),
+                "approval_anchors": normalized_anchors,
             }
         )
 
@@ -336,6 +370,25 @@ def evaluate_security(
             return result(False, "approval not granted")
         if not approval.verification_digest:
             return result(False, "independent verification required")
+        if not approval.verifier_principal_id or not approval.verifier_tenant_id:
+            return result(False, "approval verifier required")
+        verifier_identity = (
+            approval.verifier_principal_id,
+            approval.verifier_tenant_id,
+        )
+        requester_identity = (requester.principal_id, requester.tenant_id)
+        executor_identity = (executor.principal_id, executor.tenant_id)
+        if verifier_identity in {requester_identity, executor_identity}:
+            return result(False, "independent verifier required")
+        expected_anchor = ApprovalAnchor(
+            verifier_principal_id=approval.verifier_principal_id,
+            verifier_tenant_id=approval.verifier_tenant_id,
+            action=approval.action,
+            intent_digest=approval.intent_digest,
+            verification_digest=approval.verification_digest,
+        )
+        if expected_anchor not in policy.approval_anchors:
+            return result(False, "approval evidence not anchored")
 
     return result(True, "accepted")
 

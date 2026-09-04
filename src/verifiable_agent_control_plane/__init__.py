@@ -16,6 +16,7 @@ from .core import (
 )
 from .security import (
     ActionGrant,
+    ApprovalAnchor,
     ApprovalEvidence,
     ContextArtifact,
     Delegation,
@@ -30,6 +31,7 @@ from .security import (
 
 __all__ = [
     "ActionGrant",
+    "ApprovalAnchor",
     "ApprovalEvidence",
     "CanonicalState",
     "ContextArtifact",

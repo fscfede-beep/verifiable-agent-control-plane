@@ -13,6 +13,7 @@ class PackageSurfaceTests(unittest.TestCase):
     def test_public_package_exposes_agent_security_api(self):
         expected = (
             "ActionGrant",
+            "ApprovalAnchor",
             "ApprovalEvidence",
             "ContextArtifact",
             "Delegation",
