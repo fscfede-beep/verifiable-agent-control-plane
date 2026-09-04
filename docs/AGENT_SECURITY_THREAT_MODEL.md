@@ -32,6 +32,10 @@ All tests use local in-memory targets. No third-party service, credential, produ
 | S08 | Approval without verification | Sensitive approval binds independent verification evidence | missing verification digest denied |
 | S09 | Tool metadata rug pull | Provenance digest bound at decision time | changed metadata denied before execution |
 | S10 | Cross-principal replay | Security receipt binds requester identity | receipt invalid under another principal |
+| S11 | Cross-tenant grant collision | Grant binds principal ID and tenant | same ID in another tenant denied |
+| S12 | Cross-tenant delegation collision | Delegation binds both principal IDs and tenant IDs | mismatched tenant delegation denied |
+| S13 | Cross-tenant approval collision | Approval binds requester ID and tenant | approval from another tenant denied |
+| S14 | Cross-tenant executor collision | Delegation binds executor ID and tenant | executor in another tenant denied |
 
 ## Decision model
 
@@ -47,7 +51,7 @@ All tests use local in-memory targets. No third-party service, credential, produ
 - approval digest when present;
 - caller-supplied evaluation epoch.
 
-A context artifact may be attacker-controlled and may influence an upstream model's proposal, but it is never consulted as an authority source. Permission comes only from explicit grants and delegation.
+A context artifact may be attacker-controlled and may influence an upstream model's proposal, but it is never consulted as an authority source. Permission comes only from explicit grants and delegation. Grant, delegation, and approval tenant bindings are mandatory at evaluation time: constructor-level `None` values are retained only for compatibility and are rejected fail-closed. Explicit cross-tenant execution remains possible when both delegator and delegate tenant bindings match the supplied principals.
 
 ## Execution model
 

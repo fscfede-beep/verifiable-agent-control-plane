@@ -57,6 +57,8 @@ class Delegation:
     resource_scope: frozenset[str]
     active: bool = True
     expires_at_epoch: int | None = None
+    delegator_tenant_id: str | None = None
+    delegate_tenant_id: str | None = None
 
     @property
     def digest(self) -> str:
@@ -69,6 +71,8 @@ class Delegation:
                 "resource_scope": sorted(self.resource_scope),
                 "active": self.active,
                 "expires_at_epoch": self.expires_at_epoch,
+                "delegator_tenant_id": self.delegator_tenant_id,
+                "delegate_tenant_id": self.delegate_tenant_id,
             }
         )
 
@@ -113,12 +117,14 @@ class ActionGrant:
     principal_id: str
     action: str
     resource_scope: frozenset[str]
+    tenant_id: str | None = None
 
     def payload(self) -> dict[str, Any]:
         return {
             "principal_id": self.principal_id,
             "action": self.action,
             "resource_scope": sorted(self.resource_scope),
+            "tenant_id": self.tenant_id,
         }
 
 
@@ -130,6 +136,7 @@ class ApprovalEvidence:
     action: str
     approved: bool
     verification_digest: str | None
+    tenant_id: str | None = None
 
     @property
     def digest(self) -> str:
@@ -141,6 +148,7 @@ class ApprovalEvidence:
                 "action": self.action,
                 "approved": self.approved,
                 "verification_digest": self.verification_digest,
+                "tenant_id": self.tenant_id,
             }
         )
 
@@ -157,6 +165,7 @@ class SecurityPolicy:
             key=lambda item: (
                 item["principal_id"],
                 item["action"],
+                item["tenant_id"] or "",
                 tuple(item["resource_scope"]),
             ),
         )
@@ -282,13 +291,24 @@ def evaluate_security(
     )
     if not grants:
         return result(False, "principal not permitted for action")
-    if not any(requested_resources.issubset(grant.resource_scope) for grant in grants):
+    tenant_grants = tuple(
+        grant for grant in grants if grant.tenant_id == requester.tenant_id
+    )
+    if not tenant_grants:
+        return result(False, "principal tenant not permitted for action")
+    if not any(
+        requested_resources.issubset(grant.resource_scope) for grant in tenant_grants
+    ):
         return result(False, "resource outside principal scope")
 
     if delegation.delegator_principal_id != requester.principal_id:
         return result(False, "delegation requester mismatch")
+    if delegation.delegator_tenant_id != requester.tenant_id:
+        return result(False, "delegation requester tenant mismatch")
     if delegation.delegate_principal_id != executor.principal_id:
         return result(False, "delegation executor mismatch")
+    if delegation.delegate_tenant_id != executor.tenant_id:
+        return result(False, "delegation executor tenant mismatch")
     if not delegation.active:
         return result(False, "delegation inactive")
     if (
@@ -308,6 +328,8 @@ def evaluate_security(
             return result(False, "approval intent mismatch")
         if approval.principal_id != requester.principal_id:
             return result(False, "approval principal mismatch")
+        if approval.tenant_id != requester.tenant_id:
+            return result(False, "approval tenant mismatch")
         if approval.action != intent.action:
             return result(False, "approval action mismatch")
         if not approval.approved:

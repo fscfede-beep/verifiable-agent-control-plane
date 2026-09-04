@@ -136,9 +136,11 @@ verify_transition(
 
 ## Agent security evaluation
 
-The candidate agent-security layer composes over the core control plane with explicit requester/executor identity, downscoped delegation, resource grants, deterministic context provenance, approval evidence for sensitive actions, pre-execution security revalidation, and security receipts bound to the core receipt.
+The agent-security layer composes over the core control plane with explicit requester/executor identity, downscoped delegation, resource grants, deterministic context provenance, approval evidence for sensitive actions, pre-execution security revalidation, and security receipts bound to the core receipt.
 
-It is designed to make common agent/tool boundary failures reproducible with synthetic tests, including confused-deputy access, cross-principal reference grafting, untrusted MCP/tool metadata, agent-to-agent instruction carriers, delegation drift, action substitution, telemetry injection, weak approval evidence, metadata rug pulls, and cross-principal replay.
+It is designed to make common agent/tool boundary failures reproducible with synthetic tests, including confused-deputy access, cross-principal reference grafting, untrusted MCP/tool metadata, agent-to-agent instruction carriers, delegation drift, action substitution, telemetry injection, weak approval evidence, metadata rug pulls, cross-principal replay, and cross-tenant identity collisions.
+
+Authority artifacts are tenant-bound. Grants bind the requester tenant, delegations bind both delegator and delegate tenants, and approvals bind the approving requester tenant. Omitted tenant bindings are rejected fail-closed during evaluation; explicit cross-tenant delegation remains supported when both sides are bound to the supplied principals.
 
 See [`docs/AGENT_SECURITY_THREAT_MODEL.md`](docs/AGENT_SECURITY_THREAT_MODEL.md) for the threat model and explicit non-goals.
 
