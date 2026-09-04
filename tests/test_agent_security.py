@@ -1,13 +1,25 @@
 ﻿import unittest
+from dataclasses import replace
 
-from verifiable_agent_control_plane import CanonicalState, Intent
+from verifiable_agent_control_plane import (
+    CanonicalState,
+    ControlPlaneError,
+    EffectResult,
+    InMemoryTarget,
+    Intent,
+    Policy,
+    decide,
+)
 from verifiable_agent_control_plane.security import (
     ActionGrant,
+    ApprovalEvidence,
     ContextArtifact,
     Delegation,
     Principal,
     SecurityPolicy,
     evaluate_security,
+    secure_materialize,
+    verify_security_transition,
 )
 
 
@@ -23,10 +35,14 @@ class AgentSecurityTests(unittest.TestCase):
             action="set_value",
             payload={"key": "mode", "value": "safe"},
         )
+        self.core_policy = Policy(frozenset({"set_value"}))
 
-    def _grant(self, resources=frozenset({"record:a"})):
+    def _grant(self, resources=frozenset({"record:a"}), approval_required=False):
         return SecurityPolicy(
-            grants=(ActionGrant("user-a", "set_value", resources),)
+            grants=(ActionGrant("user-a", "set_value", resources),),
+            approval_required_actions=(
+                frozenset({"set_value"}) if approval_required else frozenset()
+            ),
         )
 
     def _delegation(self, resources=frozenset({"record:a"}), **kwargs):
@@ -38,6 +54,29 @@ class AgentSecurityTests(unittest.TestCase):
             resource_scope=resources,
             active=kwargs.get("active", True),
             expires_at_epoch=kwargs.get("expires_at_epoch"),
+        )
+
+    def _security_decision(
+        self,
+        *,
+        delegation=None,
+        policy=None,
+        requester=None,
+        executor=None,
+        artifacts=(),
+        approval=None,
+    ):
+        return evaluate_security(
+            intent=self.intent,
+            requester=requester or self.requester,
+            executor=executor or self.executor,
+            delegation=delegation or self._delegation(),
+            policy=policy or self._grant(),
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+            artifacts=artifacts,
+            approval=approval,
         )
 
     def test_s01_confused_deputy_cannot_exceed_requester_resource_scope(self):
@@ -122,12 +161,11 @@ class AgentSecurityTests(unittest.TestCase):
             trust_class="untrusted",
             content_digest="propagated-call-set-value",
         )
-        delegation = self._delegation(delegator="agent-b")
         decision = evaluate_security(
             intent=self.intent,
             requester=receiver,
             executor=self.executor,
-            delegation=delegation,
+            delegation=self._delegation(delegator="agent-b"),
             policy=self._grant(),
             state=self.state,
             requested_resources=frozenset({"record:a"}),
@@ -152,31 +190,187 @@ class AgentSecurityTests(unittest.TestCase):
             trust_class="unknown",
             content_digest="second-log-record",
         )
-        first = evaluate_security(
-            intent=self.intent,
-            requester=self.requester,
-            executor=self.executor,
-            delegation=self._delegation(),
-            policy=self._grant(),
-            state=self.state,
-            requested_resources=frozenset({"record:a"}),
-            evaluation_epoch=100,
-            artifacts=(telemetry_a, telemetry_b),
-        )
-        reordered = evaluate_security(
-            intent=self.intent,
-            requester=self.requester,
-            executor=self.executor,
-            delegation=self._delegation(),
-            policy=self._grant(),
-            state=self.state,
-            requested_resources=frozenset({"record:a"}),
-            evaluation_epoch=100,
-            artifacts=(telemetry_b, telemetry_a),
-        )
+        first = self._security_decision(artifacts=(telemetry_a, telemetry_b))
+        reordered = self._security_decision(artifacts=(telemetry_b, telemetry_a))
         self.assertTrue(first.accepted)
         self.assertEqual(first.provenance_digest, reordered.provenance_digest)
         self.assertTrue(first.provenance_digest)
+
+    def test_s05_delegation_drift_is_rejected_before_execution(self):
+        delegation = self._delegation()
+        security_decision = self._security_decision(delegation=delegation)
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        with self.assertRaisesRegex(
+            ControlPlaneError,
+            "security context no longer accepted: delegation inactive",
+        ):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=replace(delegation, active=False),
+                security_policy=self._grant(),
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=100,
+                execute=target.execute,
+            )
+
+        self.assertEqual(target.values, {})
+
+    def test_s06_action_substitution_still_fails_closed(self):
+        security_decision = self._security_decision()
+        core_decision = decide(self.intent, self.state, self.core_policy)
+
+        def substituted_execute(action, payload):
+            return EffectResult(
+                effect_id="substituted-effect",
+                action="delete_value",
+                requested_payload=dict(payload),
+                observed_payload=dict(payload),
+            )
+
+        with self.assertRaisesRegex(ControlPlaneError, "effect action mismatch"):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=self._delegation(),
+                security_policy=self._grant(),
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=100,
+                execute=substituted_execute,
+            )
+
+    def test_s08_sensitive_approval_requires_independent_verification_digest(self):
+        policy = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            approval_id="approval-1",
+            intent_digest=self.intent.digest,
+            principal_id="user-a",
+            action="set_value",
+            approved=True,
+            verification_digest=None,
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "independent verification required")
+
+    def test_s09_tool_metadata_rug_pull_is_detected_before_execution(self):
+        original = ContextArtifact(
+            artifact_id="tool-1",
+            source_type="mcp_tool_metadata",
+            source_id="synthetic-tool",
+            trust_class="untrusted",
+            content_digest="metadata-v1",
+        )
+        changed = replace(original, content_digest="metadata-v2")
+        security_decision = self._security_decision(artifacts=(original,))
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        with self.assertRaisesRegex(ControlPlaneError, "security context drift after decision"):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=self._delegation(),
+                security_policy=self._grant(),
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=100,
+                artifacts=(changed,),
+                execute=target.execute,
+            )
+
+        self.assertEqual(target.values, {})
+
+    def test_security_receipt_verifies_for_same_context(self):
+        delegation = self._delegation()
+        policy = self._grant()
+        security_decision = self._security_decision(delegation=delegation, policy=policy)
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        next_state, core_receipt, security_receipt, effect = secure_materialize(
+            intent=self.intent,
+            core_decision=core_decision,
+            security_decision=security_decision,
+            state=self.state,
+            core_policy=self.core_policy,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            security_policy=policy,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+            execute=target.execute,
+        )
+
+        verify_security_transition(
+            prior_state=self.state,
+            next_state=next_state,
+            intent=self.intent,
+            core_receipt=core_receipt,
+            security_receipt=security_receipt,
+            effect=effect,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            security_policy=policy,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+
+    def test_s10_security_receipt_cannot_be_replayed_under_another_principal(self):
+        delegation = self._delegation()
+        policy = self._grant()
+        security_decision = self._security_decision(delegation=delegation, policy=policy)
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+        next_state, core_receipt, security_receipt, effect = secure_materialize(
+            intent=self.intent,
+            core_decision=core_decision,
+            security_decision=security_decision,
+            state=self.state,
+            core_policy=self.core_policy,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            security_policy=policy,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+            execute=target.execute,
+        )
+        other_requester = Principal("user-b", "human", "tenant-1")
+
+        with self.assertRaisesRegex(ControlPlaneError, "security requester mismatch"):
+            verify_security_transition(
+                prior_state=self.state,
+                next_state=next_state,
+                intent=self.intent,
+                core_receipt=core_receipt,
+                security_receipt=security_receipt,
+                effect=effect,
+                requester=other_requester,
+                executor=self.executor,
+                delegation=delegation,
+                security_policy=policy,
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=100,
+            )
 
 
 if __name__ == "__main__":

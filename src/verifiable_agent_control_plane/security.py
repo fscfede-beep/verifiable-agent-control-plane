@@ -3,9 +3,19 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import json
-from typing import Any
+from typing import Any, Callable, Mapping
 
-from .core import CanonicalState, Intent
+from .core import (
+    CanonicalState,
+    ControlPlaneError,
+    Decision,
+    EffectResult,
+    Intent,
+    Policy,
+    Receipt,
+    materialize,
+    verify_transition,
+)
 
 
 def _stable_json(value: Any) -> str:
@@ -112,12 +122,36 @@ class ActionGrant:
 
 
 @dataclass(frozen=True)
-class SecurityPolicy:
-    grants: tuple[ActionGrant, ...]
+class ApprovalEvidence:
+    approval_id: str
+    intent_digest: str
+    principal_id: str
+    action: str
+    approved: bool
+    verification_digest: str | None
 
     @property
     def digest(self) -> str:
-        normalized = sorted(
+        return _hash(
+            {
+                "approval_id": self.approval_id,
+                "intent_digest": self.intent_digest,
+                "principal_id": self.principal_id,
+                "action": self.action,
+                "approved": self.approved,
+                "verification_digest": self.verification_digest,
+            }
+        )
+
+
+@dataclass(frozen=True)
+class SecurityPolicy:
+    grants: tuple[ActionGrant, ...]
+    approval_required_actions: frozenset[str] = frozenset()
+
+    @property
+    def digest(self) -> str:
+        normalized_grants = sorted(
             (grant.payload() for grant in self.grants),
             key=lambda item: (
                 item["principal_id"],
@@ -125,7 +159,12 @@ class SecurityPolicy:
                 tuple(item["resource_scope"]),
             ),
         )
-        return _hash(normalized)
+        return _hash(
+            {
+                "grants": normalized_grants,
+                "approval_required_actions": sorted(self.approval_required_actions),
+            }
+        )
 
 
 @dataclass(frozen=True)
@@ -139,9 +178,67 @@ class SecurityDecision:
     policy_digest: str
     requested_resources_digest: str
     provenance_digest: str
+    approval_digest: str | None
     evaluation_epoch: int
     accepted: bool
     reason: str
+
+
+@dataclass(frozen=True)
+class SecurityReceipt:
+    receipt_id: str
+    core_receipt_hash: str
+    intent_digest: str
+    requester_digest: str
+    executor_digest: str
+    delegation_digest: str
+    policy_digest: str
+    requested_resources_digest: str
+    provenance_digest: str
+    approval_digest: str | None
+    evaluation_epoch: int
+    security_receipt_hash: str
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        core_receipt: Receipt,
+        security_decision: SecurityDecision,
+    ) -> "SecurityReceipt":
+        base = {
+            "core_receipt_hash": core_receipt.receipt_hash,
+            "intent_digest": security_decision.intent_digest,
+            "requester_digest": security_decision.requester_digest,
+            "executor_digest": security_decision.executor_digest,
+            "delegation_digest": security_decision.delegation_digest,
+            "policy_digest": security_decision.policy_digest,
+            "requested_resources_digest": security_decision.requested_resources_digest,
+            "provenance_digest": security_decision.provenance_digest,
+            "approval_digest": security_decision.approval_digest,
+            "evaluation_epoch": security_decision.evaluation_epoch,
+        }
+        security_receipt_hash = _hash(base)
+        return cls(
+            receipt_id=f"security-receipt-{security_receipt_hash[:16]}",
+            security_receipt_hash=security_receipt_hash,
+            **base,
+        )
+
+    def verify(self) -> bool:
+        base = {
+            "core_receipt_hash": self.core_receipt_hash,
+            "intent_digest": self.intent_digest,
+            "requester_digest": self.requester_digest,
+            "executor_digest": self.executor_digest,
+            "delegation_digest": self.delegation_digest,
+            "policy_digest": self.policy_digest,
+            "requested_resources_digest": self.requested_resources_digest,
+            "provenance_digest": self.provenance_digest,
+            "approval_digest": self.approval_digest,
+            "evaluation_epoch": self.evaluation_epoch,
+        }
+        return self.security_receipt_hash == _hash(base)
 
 
 def evaluate_security(
@@ -155,6 +252,7 @@ def evaluate_security(
     requested_resources: frozenset[str],
     evaluation_epoch: int,
     artifacts: tuple[ContextArtifact, ...] = (),
+    approval: ApprovalEvidence | None = None,
 ) -> SecurityDecision:
     def result(accepted: bool, reason: str) -> SecurityDecision:
         return SecurityDecision(
@@ -167,6 +265,7 @@ def evaluate_security(
             policy_digest=policy.digest,
             requested_resources_digest=_resource_digest(requested_resources),
             provenance_digest=_provenance_digest(artifacts),
+            approval_digest=approval.digest if approval is not None else None,
             evaluation_epoch=evaluation_epoch,
             accepted=accepted,
             reason=reason,
@@ -198,4 +297,121 @@ def evaluate_security(
     if not requested_resources.issubset(delegation.resource_scope):
         return result(False, "resource outside delegation scope")
 
+    if intent.action in policy.approval_required_actions:
+        if approval is None:
+            return result(False, "approval required")
+        if approval.intent_digest != intent.digest:
+            return result(False, "approval intent mismatch")
+        if approval.principal_id != requester.principal_id:
+            return result(False, "approval principal mismatch")
+        if approval.action != intent.action:
+            return result(False, "approval action mismatch")
+        if not approval.approved:
+            return result(False, "approval not granted")
+        if not approval.verification_digest:
+            return result(False, "independent verification required")
+
     return result(True, "accepted")
+
+
+def secure_materialize(
+    *,
+    intent: Intent,
+    core_decision: Decision,
+    security_decision: SecurityDecision,
+    state: CanonicalState,
+    core_policy: Policy,
+    requester: Principal,
+    executor: Principal,
+    delegation: Delegation,
+    security_policy: SecurityPolicy,
+    requested_resources: frozenset[str],
+    evaluation_epoch: int,
+    execute: Callable[[str, Mapping[str, Any]], EffectResult],
+    artifacts: tuple[ContextArtifact, ...] = (),
+    approval: ApprovalEvidence | None = None,
+) -> tuple[CanonicalState, Receipt, SecurityReceipt, EffectResult]:
+    if not security_decision.accepted:
+        raise ControlPlaneError("rejected security decision cannot materialize")
+
+    current_security_decision = evaluate_security(
+        intent=intent,
+        requester=requester,
+        executor=executor,
+        delegation=delegation,
+        policy=security_policy,
+        state=state,
+        requested_resources=requested_resources,
+        evaluation_epoch=evaluation_epoch,
+        artifacts=artifacts,
+        approval=approval,
+    )
+    if not current_security_decision.accepted:
+        raise ControlPlaneError(
+            f"security context no longer accepted: {current_security_decision.reason}"
+        )
+    if current_security_decision != security_decision:
+        raise ControlPlaneError("security context drift after decision")
+
+    next_state, core_receipt, effect = materialize(
+        intent=intent,
+        decision=core_decision,
+        state=state,
+        policy=core_policy,
+        execute=execute,
+    )
+    security_receipt = SecurityReceipt.build(
+        core_receipt=core_receipt,
+        security_decision=current_security_decision,
+    )
+    return next_state, core_receipt, security_receipt, effect
+
+
+def verify_security_transition(
+    *,
+    prior_state: CanonicalState,
+    next_state: CanonicalState,
+    intent: Intent,
+    core_receipt: Receipt,
+    security_receipt: SecurityReceipt,
+    effect: EffectResult,
+    requester: Principal,
+    executor: Principal,
+    delegation: Delegation,
+    security_policy: SecurityPolicy,
+    requested_resources: frozenset[str],
+    evaluation_epoch: int,
+    artifacts: tuple[ContextArtifact, ...] = (),
+    approval: ApprovalEvidence | None = None,
+) -> None:
+    verify_transition(
+        prior_state=prior_state,
+        next_state=next_state,
+        intent=intent,
+        receipt=core_receipt,
+        effect=effect,
+    )
+
+    if not security_receipt.verify():
+        raise ControlPlaneError("security receipt hash mismatch")
+    if security_receipt.core_receipt_hash != core_receipt.receipt_hash:
+        raise ControlPlaneError("security/core receipt mismatch")
+    if security_receipt.intent_digest != intent.digest:
+        raise ControlPlaneError("security intent mismatch")
+    if security_receipt.requester_digest != requester.digest:
+        raise ControlPlaneError("security requester mismatch")
+    if security_receipt.executor_digest != executor.digest:
+        raise ControlPlaneError("security executor mismatch")
+    if security_receipt.delegation_digest != delegation.digest:
+        raise ControlPlaneError("security delegation mismatch")
+    if security_receipt.policy_digest != security_policy.digest:
+        raise ControlPlaneError("security policy mismatch")
+    if security_receipt.requested_resources_digest != _resource_digest(requested_resources):
+        raise ControlPlaneError("security resource scope mismatch")
+    if security_receipt.provenance_digest != _provenance_digest(artifacts):
+        raise ControlPlaneError("security provenance mismatch")
+    approval_digest = approval.digest if approval is not None else None
+    if security_receipt.approval_digest != approval_digest:
+        raise ControlPlaneError("security approval mismatch")
+    if security_receipt.evaluation_epoch != evaluation_epoch:
+        raise ControlPlaneError("security evaluation epoch mismatch")
