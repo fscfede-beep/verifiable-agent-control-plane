@@ -142,6 +142,8 @@ It is designed to make common agent/tool boundary failures reproducible with syn
 
 Authority artifacts are tenant-bound. Grants bind the requester tenant, delegations bind both delegator and delegate tenants, and approvals bind the approving requester tenant. Omitted tenant bindings are rejected fail-closed during evaluation; explicit cross-tenant delegation remains supported when both sides are bound to the supplied principals. Approval-required actions additionally require a verifier identity distinct from both requester and executor plus an exact `ApprovalAnchor` in trusted policy binding requester identity and tenant, verifier identity and tenant, action, intent digest, and verification digest. Unbound requester fields, a non-empty digest, or a claimed verifier identity alone cannot authorize the action.
 
+Decision-to-effect time handling is monotonic: `secure_materialize` permits the caller-supplied evaluation epoch to move forward, rejects epoch rollback, and re-checks delegation expiry at the newer epoch while keeping all non-time security context exact. The epoch is still a trusted-host input; this project does not claim an authenticated wall clock or external time attestation.
+
 See [`docs/AGENT_SECURITY_THREAT_MODEL.md`](docs/AGENT_SECURITY_THREAT_MODEL.md) for the threat model and explicit non-goals.
 
 This layer does **not** turn the project into a production security product and does not claim certification, third-party penetration testing, or complete protection against all agentic attacks.

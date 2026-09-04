@@ -44,6 +44,10 @@ All tests use local in-memory targets. No third-party service, credential, produ
 | S20 | Cross-action approval reuse | Anchor binds exact action | anchor for another action denied |
 | S21 | Cross-principal approval-anchor replay | Anchor binds exact requester principal ID | anchor issued for another requester denied |
 | S22 | Cross-tenant requester approval replay | Anchor binds exact requester tenant ID | same requester ID in another tenant denied |
+| S23 | Frozen evaluation epoch | Materialization may advance epoch monotonically while delegation remains valid | later pre-expiry epoch accepted |
+| S24 | Evaluation epoch rollback | Materialization epoch cannot move backward from the accepted decision | rollback denied before effect |
+| S25 | Expiry during decision-to-effect gap | Security is re-evaluated at the materialization epoch | advanced epoch at/after expiry denied |
+| S26 | Drift hidden by time advancement | Only epoch advancement is relaxed; all other security fields remain exact | non-time drift still denied |
 
 ## Decision model
 
@@ -63,9 +67,11 @@ A context artifact may be attacker-controlled and may influence an upstream mode
 
 ## Execution model
 
-`secure_materialize` requires both an accepted core decision and an accepted security decision. Immediately before the effect, it re-runs security evaluation from current inputs. Rejection or any security-context drift stops before calling the executor.
+`secure_materialize` requires both an accepted core decision and an accepted security decision. Immediately before the effect, it re-runs security evaluation from current inputs. The materialization epoch may advance monotonically from the decision epoch; rollback is rejected. Expiry is evaluated at the newer epoch, while every non-time security field must still match the accepted decision exactly. Rejection or non-time security-context drift stops before calling the executor.
 
-If the security context is unchanged, the existing core `materialize` function still performs action binding, deterministic core revalidation, effect readback, canonical revision advancement, and core receipt construction.
+The evaluation epoch remains a caller-supplied trusted-host input. This reference implementation enforces monotonic use of that input across decision and materialization; it does **not** authenticate wall-clock time or prove that the supplied epoch came from an external trusted time service.
+
+If the security context is unchanged apart from permitted epoch advancement, the existing core `materialize` function still performs action binding, deterministic core revalidation, effect readback, canonical revision advancement, and core receipt construction.
 
 ## Receipt model
 

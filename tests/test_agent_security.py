@@ -864,5 +864,156 @@ class AgentSecurityTests(unittest.TestCase):
         self.assertEqual(first.digest, reversed_order.digest)
 
 
+    def test_s23_materialization_allows_monotonic_epoch_advance_before_expiry(self):
+        delegation = self._delegation(expires_at_epoch=200)
+        policy = self._grant()
+        security_decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            policy=policy,
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        next_state, _, security_receipt, _ = secure_materialize(
+            intent=self.intent,
+            core_decision=core_decision,
+            security_decision=security_decision,
+            state=self.state,
+            core_policy=self.core_policy,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            security_policy=policy,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=150,
+            execute=target.execute,
+        )
+
+        self.assertEqual(next_state.revision, 1)
+        self.assertEqual(security_receipt.evaluation_epoch, 150)
+
+    def test_s24_materialization_rejects_evaluation_epoch_rollback(self):
+        delegation = self._delegation(expires_at_epoch=200)
+        policy = self._grant()
+        security_decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            policy=policy,
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        with self.assertRaisesRegex(ControlPlaneError, "security evaluation epoch rollback"):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=delegation,
+                security_policy=policy,
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=99,
+                execute=target.execute,
+            )
+
+
+    def test_s25_materialization_rejects_expiry_at_advanced_epoch(self):
+        delegation = self._delegation(expires_at_epoch=200)
+        policy = self._grant()
+        security_decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            policy=policy,
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        with self.assertRaisesRegex(
+            ControlPlaneError,
+            "security context no longer accepted: delegation expired",
+        ):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=delegation,
+                security_policy=policy,
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=200,
+                execute=target.execute,
+            )
+
+    def test_s26_non_time_security_drift_still_rejected_when_epoch_advances(self):
+        delegation = self._delegation(expires_at_epoch=200)
+        policy = self._grant()
+        original = ContextArtifact(
+            artifact_id="tool-meta",
+            source_type="mcp_tool_metadata",
+            source_id="tool-a",
+            trust_class="untrusted",
+            content_digest="before",
+        )
+        changed = ContextArtifact(
+            artifact_id="tool-meta",
+            source_type="mcp_tool_metadata",
+            source_id="tool-a",
+            trust_class="untrusted",
+            content_digest="after",
+        )
+        security_decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=self.executor,
+            delegation=delegation,
+            policy=policy,
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+            artifacts=(original,),
+        )
+        core_decision = decide(self.intent, self.state, self.core_policy)
+        target = InMemoryTarget()
+
+        with self.assertRaisesRegex(ControlPlaneError, "security context drift after decision"):
+            secure_materialize(
+                intent=self.intent,
+                core_decision=core_decision,
+                security_decision=security_decision,
+                state=self.state,
+                core_policy=self.core_policy,
+                requester=self.requester,
+                executor=self.executor,
+                delegation=delegation,
+                security_policy=policy,
+                requested_resources=frozenset({"record:a"}),
+                evaluation_epoch=150,
+                artifacts=(changed,),
+                execute=target.execute,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
