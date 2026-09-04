@@ -12,6 +12,7 @@ from verifiable_agent_control_plane import (
 )
 from verifiable_agent_control_plane.security import (
     ActionGrant,
+    ApprovalAnchor,
     ApprovalEvidence,
     ContextArtifact,
     Delegation,
@@ -589,6 +590,160 @@ class AgentSecurityTests(unittest.TestCase):
         self.assertIn("delegator_tenant_id", signature(Delegation).parameters)
         self.assertIn("delegate_tenant_id", signature(Delegation).parameters)
         self.assertIn("tenant_id", signature(ApprovalEvidence).parameters)
+
+    def test_approval_model_exposes_independent_verifier_bindings(self):
+        from inspect import signature
+
+        approval_params = signature(ApprovalEvidence).parameters
+        policy_params = signature(SecurityPolicy).parameters
+        self.assertIn("verifier_principal_id", approval_params)
+        self.assertIn("verifier_tenant_id", approval_params)
+        self.assertIn("approval_anchors", policy_params)
+
+    def test_approval_policy_exposes_exact_verification_anchors(self):
+        import verifiable_agent_control_plane.security as security_module
+
+        self.assertTrue(hasattr(security_module, "ApprovalAnchor"))
+
+    def test_s15_self_verification_is_rejected(self):
+        base = self._grant(approval_required=True)
+        anchor = ApprovalAnchor(
+            "user-a", "tenant-1", "set_value", self.intent.digest, "self-check"
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        approval = ApprovalEvidence(
+            "approval-self", self.intent.digest, "user-a", "set_value",
+            True, "self-check", tenant_id="tenant-1",
+            verifier_principal_id="user-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "independent verifier required")
+
+    def test_s16_unanchored_verifier_is_rejected(self):
+        base = self._grant(approval_required=True)
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+        )
+        approval = ApprovalEvidence(
+            "approval-unanchored", self.intent.digest, "user-a", "set_value",
+            True, "fabricated-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+    def test_approval_with_digest_but_no_verifier_fails_closed(self):
+        policy = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            "approval-unbound-verifier", self.intent.digest, "user-a", "set_value",
+            True, "nonempty-check", tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval verifier required")
+
+    def test_trusted_independent_verifier_is_accepted(self):
+        base = self._grant(approval_required=True)
+        anchor = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value",
+            self.intent.digest, "independent-check",
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        approval = ApprovalEvidence(
+            "approval-trusted", self.intent.digest, "user-a", "set_value",
+            True, "independent-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.reason, "accepted")
+
+    def test_s17_executor_cannot_self_verify_approval(self):
+        base = self._grant(approval_required=True)
+        anchor = ApprovalAnchor(
+            "service-agent", "tenant-1", "set_value",
+            self.intent.digest, "executor-check",
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        approval = ApprovalEvidence(
+            "approval-executor", self.intent.digest, "user-a", "set_value",
+            True, "executor-check", tenant_id="tenant-1",
+            verifier_principal_id="service-agent", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "independent verifier required")
+
+    def test_s18_fabricated_verifier_metadata_without_anchor_is_rejected(self):
+        base = self._grant(approval_required=True)
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+        )
+        approval = ApprovalEvidence(
+            "approval-fabricated", self.intent.digest, "user-a", "set_value",
+            True, "fabricated-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+    def test_s19_approval_anchor_cannot_be_reused_for_another_intent(self):
+        base = self._grant(approval_required=True)
+        anchor = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value",
+            "different-intent-digest", "reviewer-check",
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        approval = ApprovalEvidence(
+            "approval-replay", self.intent.digest, "user-a", "set_value",
+            True, "reviewer-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+    def test_s20_approval_anchor_binds_action(self):
+        base = self._grant(approval_required=True)
+        anchor = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "other_action",
+            self.intent.digest, "reviewer-check",
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        approval = ApprovalEvidence(
+            "approval-wrong-action-anchor", self.intent.digest,
+            "user-a", "set_value", True, "reviewer-check", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
 
 if __name__ == "__main__":
     unittest.main()
