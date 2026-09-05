@@ -59,6 +59,8 @@ class Delegation:
     expires_at_epoch: int | None = None
     delegator_tenant_id: str | None = None
     delegate_tenant_id: str | None = None
+    delegator_principal_type: str | None = None
+    delegate_principal_type: str | None = None
 
     @property
     def digest(self) -> str:
@@ -73,6 +75,8 @@ class Delegation:
                 "expires_at_epoch": self.expires_at_epoch,
                 "delegator_tenant_id": self.delegator_tenant_id,
                 "delegate_tenant_id": self.delegate_tenant_id,
+                "delegator_principal_type": self.delegator_principal_type,
+                "delegate_principal_type": self.delegate_principal_type,
             }
         )
 
@@ -118,6 +122,7 @@ class ActionGrant:
     action: str
     resource_scope: frozenset[str]
     tenant_id: str | None = None
+    principal_type: str | None = None
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -125,6 +130,7 @@ class ActionGrant:
             "action": self.action,
             "resource_scope": sorted(self.resource_scope),
             "tenant_id": self.tenant_id,
+            "principal_type": self.principal_type,
         }
 
 
@@ -139,6 +145,8 @@ class ApprovalEvidence:
     tenant_id: str | None = None
     verifier_principal_id: str | None = None
     verifier_tenant_id: str | None = None
+    principal_type: str | None = None
+    verifier_principal_type: str | None = None
 
     @property
     def digest(self) -> str:
@@ -153,6 +161,8 @@ class ApprovalEvidence:
                 "tenant_id": self.tenant_id,
                 "verifier_principal_id": self.verifier_principal_id,
                 "verifier_tenant_id": self.verifier_tenant_id,
+                "principal_type": self.principal_type,
+                "verifier_principal_type": self.verifier_principal_type,
             }
         )
 
@@ -166,6 +176,8 @@ class ApprovalAnchor:
     verification_digest: str
     requester_principal_id: str | None = None
     requester_tenant_id: str | None = None
+    requester_principal_type: str | None = None
+    verifier_principal_type: str | None = None
 
     def payload(self) -> dict[str, str | None]:
         return {
@@ -176,6 +188,8 @@ class ApprovalAnchor:
             "verification_digest": self.verification_digest,
             "requester_principal_id": self.requester_principal_id,
             "requester_tenant_id": self.requester_tenant_id,
+            "requester_principal_type": self.requester_principal_type,
+            "verifier_principal_type": self.verifier_principal_type,
         }
 
 
@@ -193,6 +207,7 @@ class SecurityPolicy:
                 item["principal_id"],
                 item["action"],
                 item["tenant_id"] or "",
+                item["principal_type"] or "",
                 tuple(item["resource_scope"]),
             ),
         )
@@ -206,6 +221,8 @@ class SecurityPolicy:
                 item["verification_digest"],
                 item["requester_principal_id"] or "",
                 item["requester_tenant_id"] or "",
+                item["requester_principal_type"] or "",
+                item["verifier_principal_type"] or "",
             ),
         )
         return _hash(
@@ -336,8 +353,13 @@ def evaluate_security(
     )
     if not tenant_grants:
         return result(False, "principal tenant not permitted for action")
+    type_grants = tuple(
+        grant for grant in tenant_grants if grant.principal_type == requester.principal_type
+    )
+    if not type_grants:
+        return result(False, "principal type not permitted for action")
     if not any(
-        requested_resources.issubset(grant.resource_scope) for grant in tenant_grants
+        requested_resources.issubset(grant.resource_scope) for grant in type_grants
     ):
         return result(False, "resource outside principal scope")
 
@@ -345,10 +367,14 @@ def evaluate_security(
         return result(False, "delegation requester mismatch")
     if delegation.delegator_tenant_id != requester.tenant_id:
         return result(False, "delegation requester tenant mismatch")
+    if delegation.delegator_principal_type != requester.principal_type:
+        return result(False, "delegation requester type mismatch")
     if delegation.delegate_principal_id != executor.principal_id:
         return result(False, "delegation executor mismatch")
     if delegation.delegate_tenant_id != executor.tenant_id:
         return result(False, "delegation executor tenant mismatch")
+    if delegation.delegate_principal_type != executor.principal_type:
+        return result(False, "delegation executor type mismatch")
     if not delegation.active:
         return result(False, "delegation inactive")
     if (
@@ -370,20 +396,35 @@ def evaluate_security(
             return result(False, "approval principal mismatch")
         if approval.tenant_id != requester.tenant_id:
             return result(False, "approval tenant mismatch")
+        if approval.principal_type != requester.principal_type:
+            return result(False, "approval principal type mismatch")
         if approval.action != intent.action:
             return result(False, "approval action mismatch")
         if not approval.approved:
             return result(False, "approval not granted")
         if not approval.verification_digest:
             return result(False, "independent verification required")
-        if not approval.verifier_principal_id or not approval.verifier_tenant_id:
+        if (
+            not approval.verifier_principal_id
+            or not approval.verifier_tenant_id
+            or not approval.verifier_principal_type
+        ):
             return result(False, "approval verifier required")
         verifier_identity = (
             approval.verifier_principal_id,
+            approval.verifier_principal_type,
             approval.verifier_tenant_id,
         )
-        requester_identity = (requester.principal_id, requester.tenant_id)
-        executor_identity = (executor.principal_id, executor.tenant_id)
+        requester_identity = (
+            requester.principal_id,
+            requester.principal_type,
+            requester.tenant_id,
+        )
+        executor_identity = (
+            executor.principal_id,
+            executor.principal_type,
+            executor.tenant_id,
+        )
         if verifier_identity in {requester_identity, executor_identity}:
             return result(False, "independent verifier required")
         expected_anchor = ApprovalAnchor(
@@ -394,6 +435,8 @@ def evaluate_security(
             verification_digest=approval.verification_digest,
             requester_principal_id=requester.principal_id,
             requester_tenant_id=requester.tenant_id,
+            requester_principal_type=requester.principal_type,
+            verifier_principal_type=approval.verifier_principal_type,
         )
         if expected_anchor not in policy.approval_anchors:
             return result(False, "approval evidence not anchored")
