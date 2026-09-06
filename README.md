@@ -16,6 +16,10 @@ python examples/reliable_tool_workflow.py
 
 The demo shows one verified `PASS` transition and one deterministic `FAIL-CLOSED` state-drift rejection before the blocked target can mutate. See the [Reliability Quickstart](docs/QUICKSTART.md) for the walkthrough and claim boundaries.
 
+## Technical deep dives
+
+- [An accepted agent action is not necessarily executable](docs/STATE_DRIFT_AFTER_DECISION.md) — why an accepted decision must be rebound to current state before the effect boundary, and how the demo proves the blocked target did not mutate.
+
 ## Public verification
 
 The public `test` workflow installs the project from source, runs the unit suite on Python **3.11, 3.12, and 3.13**, and verifies the installed import surface outside the repository checkout.
