@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from verifiable_agent_control_plane import (
@@ -160,3 +161,29 @@ class ContinuityLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(CanonicalProblemError, "event hash mismatch"):
             bad.verify()
 
+
+
+    def test_mixed_problem_ids_fail_closed(self):
+        ledger = ContinuityLedger().append(self.state0, "discover")
+        event = ContinuityEvent.build(
+            state=self.state2,
+            action="jump",
+            previous_event_hash=ledger.events[-1].event_hash,
+        )
+        bad = ContinuityLedger(ledger.events + (event,))
+        with self.assertRaisesRegex(CanonicalProblemError, "problem mismatch"):
+            bad.verify()
+
+    def test_missing_event_field_fails_closed(self):
+        data = json.loads(ContinuityLedger().append(self.state0, "discover").to_json())
+        del data["events"][0]["action"]
+        with self.assertRaisesRegex(CanonicalProblemError, "missing required fields"):
+            ContinuityLedger.from_json(json.dumps(data))
+
+    def test_empty_action_fails_closed(self):
+        with self.assertRaisesRegex(CanonicalProblemError, "action must be non-empty"):
+            ContinuityEvent.build(
+                state=self.state0,
+                action="",
+                previous_event_hash=None,
+            )
