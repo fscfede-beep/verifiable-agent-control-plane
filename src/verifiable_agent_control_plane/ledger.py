@@ -34,6 +34,8 @@ class ContinuityEvent:
         previous_event_hash: str | None,
     ) -> "ContinuityEvent":
         state.validate()
+        if not isinstance(action, str) or not action:
+            raise CanonicalProblemError("continuity event action must be non-empty")
         if state.brand != BRAND:
             raise CanonicalProblemError("continuity event requires RUMBO IA state")
         base = {
@@ -83,9 +85,14 @@ class ContinuityLedger:
     def verify(self, state: CanonicalProblemState | None = None) -> None:
         previous: str | None = None
         expected_revision: int | None = None
+        expected_problem_id: str | None = None
         for event in self.events:
             if not event.verify():
                 raise CanonicalProblemError("continuity ledger event hash mismatch")
+            if expected_problem_id is None:
+                expected_problem_id = event.problem_id
+            elif event.problem_id != expected_problem_id:
+                raise CanonicalProblemError("continuity ledger problem mismatch")
             if event.previous_event_hash != previous:
                 raise CanonicalProblemError("continuity ledger chain mismatch")
             if expected_revision is not None and event.revision != expected_revision + 1:
@@ -117,11 +124,23 @@ class ContinuityLedger:
         if not isinstance(data, Mapping) or not isinstance(data.get("events"), list):
             raise CanonicalProblemError("continuity ledger JSON must contain events list")
         events = []
+        required = (
+            "problem_id",
+            "revision",
+            "state_digest",
+            "action",
+            "event_hash",
+        )
         for item in data["events"]:
             if not isinstance(item, Mapping):
                 raise CanonicalProblemError("invalid continuity event")
-            events.append(
-                ContinuityEvent(
+            missing = [key for key in required if key not in item]
+            if missing:
+                raise CanonicalProblemError(
+                    "continuity event missing required fields: " + ", ".join(missing)
+                )
+            try:
+                event = ContinuityEvent(
                     problem_id=str(item["problem_id"]),
                     revision=int(item["revision"]),
                     state_digest=str(item["state_digest"]),
@@ -129,7 +148,9 @@ class ContinuityLedger:
                     previous_event_hash=item.get("previous_event_hash"),
                     event_hash=str(item["event_hash"]),
                 )
-            )
+            except (TypeError, ValueError) as exc:
+                raise CanonicalProblemError("invalid continuity event fields") from exc
+            events.append(event)
         ledger = cls(tuple(events))
         ledger.verify()
         return ledger
