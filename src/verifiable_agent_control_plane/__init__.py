@@ -14,7 +14,7 @@ from .core import (
     validate_intent,
     verify_transition,
 )
-from .security import (
+from .canonical import (\n    CanonicalProblemError,\n    CanonicalProblemState,\n    Evidence,\n    SCHEMA_VERSION,\n    advance,\n    resume_state,\n)\nfrom .security import (
     ActionGrant,
     ApprovalAnchor,
     ApprovalEvidence,
@@ -30,11 +30,11 @@ from .security import (
 )
 
 __all__ = [
-    "ActionGrant",
+    "ActionGrant",\n    "CanonicalProblemError",\n    "CanonicalProblemState",
     "ApprovalAnchor",
     "ApprovalEvidence",
     "CanonicalState",
-    "ContextArtifact",
+    "ContextArtifact",\n    "Evidence",
     "ControlPlaneError",
     "Decision",
     "Delegation",
@@ -46,12 +46,12 @@ __all__ = [
     "Receipt",
     "SecurityDecision",
     "SecurityPolicy",
-    "SecurityReceipt",
+    "SecurityReceipt",\n    "SCHEMA_VERSION",\n    "advance",
     "decide",
     "evaluate_security",
     "materialize",
     "secure_materialize",
     "validate_intent",
     "verify_security_transition",
-    "verify_transition",
+    "verify_transition",\n    "resume_state",
 ]
