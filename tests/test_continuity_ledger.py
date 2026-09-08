@@ -110,7 +110,6 @@ if __name__ == "__main__":
     unittest.main()
 
 
-from verifiable_agent_control_plane import ContinuityLedger
 
 
 class ContinuityLedgerTests(unittest.TestCase):
