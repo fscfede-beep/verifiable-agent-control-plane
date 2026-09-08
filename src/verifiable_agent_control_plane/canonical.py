@@ -110,6 +110,15 @@ class CanonicalProblemState:
             raise CanonicalProblemError("canonical identity fields must be non-empty strings")
         if self.revision < 0:
             raise CanonicalProblemError("revision must be non-negative")
+        if self.brand != BRAND:
+            raise CanonicalProblemError("canonical state requires RUMBO IA brand")
+        if not self.brand_record_id:
+            raise CanonicalProblemError("canonical state requires RUMBO IA brand_record_id")
+        record_parts = self.brand_record_id.split("/")
+        if len(record_parts) != 4 or record_parts[0] != BRAND_NAMESPACE or not record_parts[1]:
+            raise CanonicalProblemError("invalid RUMBO IA brand_record_id")
+        if record_parts[2] != self.problem_id or record_parts[3] != str(self.revision):
+            raise CanonicalProblemError("brand_record_id must bind problem_id and revision")
         for item in self.evidence:
             item.validate()
         if any(not isinstance(decision, str) or not decision for decision in self.decisions):
@@ -192,6 +201,8 @@ class CanonicalProblemState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": SCHEMA_VERSION,
+            "brand": self.brand,
+            "brand_record_id": self.brand_record_id,
             "problem_id": self.problem_id,
             "title": self.title,
             "objective": self.objective,
@@ -252,10 +263,12 @@ def advance(
     state.validate()
     if status not in _STATUS_VALUES:
         raise CanonicalProblemError("invalid canonical status")
+    project = state.brand_record_id.split("/")[1]
+    record_id = f"{BRAND_NAMESPACE}/{project}/{state.problem_id}/{state.revision + 1}"
     updated = CanonicalProblemState(
         problem_id=state.problem_id,
         brand=state.brand,
-        brand_record_id=state.brand_record_id,
+        brand_record_id=record_id,
         title=state.title,
         objective=state.objective,
         status=status,
