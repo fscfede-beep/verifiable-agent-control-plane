@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import hashlib, json, platform, subprocess
+import hashlib, json, os, platform, subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,16 +18,19 @@ def sha256_text(p: Path) -> str:
 def main():
     twin = ROOT / "twin" / "environment-bridge.yaml"
     bridge = ROOT / "twin" / "ENVIRONMENT_BRIDGE.md"
-    print(json.dumps({
+    output = {
         "repository": "fscfede-beep/verifiable-agent-control-plane",
         "branch": run(["git","branch","--show-current"]),
         "commit": run(["git","rev-parse","HEAD"]),
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "environment_role": os.getenv("TWIN_ENV_ROLE"),
+        "environment_id": os.getenv("TWIN_ENV_ID"),
         "twin_bridge_sha256": sha256_text(bridge) if bridge.exists() else None,
         "twin_config_sha256": sha256_text(twin) if twin.exists() else None,
         "tests": run(["python","-m","unittest","discover","-s","tests","-v"]),
-    }, indent=2, ensure_ascii=False))
+    }
+    print(json.dumps(output, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()
