@@ -18,6 +18,8 @@ def _hash(value: Any) -> str:
 
 @dataclass(frozen=True)
 class ContinuityEvent:
+    brand: str
+    brand_record_id: str
     problem_id: str
     revision: int
     state_digest: str
@@ -36,9 +38,15 @@ class ContinuityEvent:
         state.validate()
         if not isinstance(action, str) or not action:
             raise CanonicalProblemError("continuity event action must be non-empty")
-        if state.brand != BRAND:
-            raise CanonicalProblemError("continuity event requires RUMBO IA state")
+        if state.brand != BRAND or not state.brand_record_id:
+            raise CanonicalProblemError("continuity event requires RUMBO IA provenance")
+        if not state.brand_record_id.startswith("RUMBO-IA/"):
+            raise CanonicalProblemError("invalid RUMBO IA record id")
+        if state.brand_record_id.rsplit("/", 1)[-1] != str(state.revision):
+            raise CanonicalProblemError("RUMBO IA record revision mismatch")
         base = {
+            "brand": state.brand,
+            "brand_record_id": state.brand_record_id,
             "problem_id": state.problem_id,
             "revision": state.revision,
             "state_digest": state.digest,
@@ -48,6 +56,8 @@ class ContinuityEvent:
         return cls(event_hash=_hash(base), **base)
 
     def verify(self) -> bool:
+        if self.brand != BRAND or not self.brand_record_id:
+            return False
         if not self.problem_id or not self.state_digest or not self.action:
             return False
         if self.revision < 0:
@@ -59,6 +69,8 @@ class ContinuityEvent:
         except ValueError:
             return False
         base = {
+            "brand": self.brand,
+            "brand_record_id": self.brand_record_id,
             "problem_id": self.problem_id,
             "revision": self.revision,
             "state_digest": self.state_digest,
@@ -69,6 +81,8 @@ class ContinuityEvent:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "brand": self.brand,
+            "brand_record_id": self.brand_record_id,
             "problem_id": self.problem_id,
             "revision": self.revision,
             "state_digest": self.state_digest,
@@ -137,6 +151,8 @@ class ContinuityLedger:
             raise CanonicalProblemError("continuity ledger JSON must contain events list")
         events = []
         required = (
+            "brand",
+            "brand_record_id",
             "problem_id",
             "revision",
             "state_digest",
@@ -153,6 +169,8 @@ class ContinuityLedger:
                 )
             try:
                 event = ContinuityEvent(
+                    brand=str(item["brand"]),
+                    brand_record_id=str(item["brand_record_id"]),
                     problem_id=str(item["problem_id"]),
                     revision=int(item["revision"]),
                     state_digest=str(item["state_digest"]),
