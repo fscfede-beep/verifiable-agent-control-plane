@@ -23,6 +23,7 @@ def _hash(value: Any) -> str:
 class ContinuityEvent:
     brand: str
     brand_record_id: str
+    project: str
     problem_id: str
     revision: int
     state_digest: str
@@ -50,6 +51,7 @@ class ContinuityEvent:
         base = {
             "brand": BRAND,
             "brand_record_id": brand_record_id,
+            "project": project,
             "problem_id": state.problem_id,
             "revision": state.revision,
             "state_digest": state.digest,
@@ -65,6 +67,8 @@ class ContinuityEvent:
             return False
         if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
             return False
+        if not self.project or "/" in self.project:
+            return False
         if not self.problem_id or not self.state_digest or not self.action:
             return False
         if self.revision < 0:
@@ -78,6 +82,7 @@ class ContinuityEvent:
         base = {
             "brand": self.brand,
             "brand_record_id": self.brand_record_id,
+            "project": self.project,
             "problem_id": self.problem_id,
             "revision": self.revision,
             "state_digest": self.state_digest,
@@ -90,6 +95,7 @@ class ContinuityEvent:
         return {
             "brand": self.brand,
             "brand_record_id": self.brand_record_id,
+            "project": self.project,
             "problem_id": self.problem_id,
             "revision": self.revision,
             "state_digest": self.state_digest,
@@ -123,6 +129,7 @@ class ContinuityLedger:
         previous: str | None = None
         expected_revision: int | None = None
         expected_problem_id: str | None = None
+        expected_project: str | None = None
         if self.events and self.events[0].revision != 0:
             raise CanonicalProblemError("continuity ledger must start at revision 0")
         for event in self.events:
@@ -132,6 +139,10 @@ class ContinuityLedger:
                 expected_problem_id = event.problem_id
             elif event.problem_id != expected_problem_id:
                 raise CanonicalProblemError("continuity ledger problem mismatch")
+            if expected_project is None:
+                expected_project = event.project
+            elif event.project != expected_project:
+                raise CanonicalProblemError("continuity ledger project mismatch")
             if event.previous_event_hash != previous:
                 raise CanonicalProblemError("continuity ledger chain mismatch")
             if expected_revision is not None and event.revision != expected_revision + 1:
@@ -166,6 +177,7 @@ class ContinuityLedger:
         required = (
             "brand",
             "brand_record_id",
+            "project",
             "problem_id",
             "revision",
             "state_digest",
@@ -184,6 +196,7 @@ class ContinuityLedger:
                 event = ContinuityEvent(
                     brand=str(item["brand"]),
                     brand_record_id=str(item["brand_record_id"]),
+                    project=str(item["project"]),
                     problem_id=str(item["problem_id"]),
                     revision=int(item["revision"]),
                     state_digest=str(item["state_digest"]),
