@@ -1,0 +1,30 @@
+version: 1
+repository: fscfede-beep/verifiable-agent-control-plane
+branch: twin/dual-environment-bridge
+
+environments:
+  A:
+    role: primary
+    id: null
+  B:
+    role: twin
+    id: null
+
+equivalence_gate:
+  fail_closed_on_mismatch: true
+  required:
+    - repository_sha
+    - twin_spec_digest
+    - tool_policy_digest
+    - runtime_version
+    - test_status
+
+security:
+  never_commit:
+    - password
+    - cookie
+    - oauth_token
+    - access_token
+    - api_key
+    - recovery_code
+    - session_id
