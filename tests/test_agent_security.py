@@ -40,7 +40,7 @@ class AgentSecurityTests(unittest.TestCase):
 
     def _grant(self, resources=frozenset({"record:a"}), approval_required=False):
         return SecurityPolicy(
-            grants=(ActionGrant("user-a", "set_value", resources, tenant_id="tenant-1"),),
+            grants=(ActionGrant("user-a", "set_value", resources, tenant_id="tenant-1", principal_type="human"),),
             approval_required_actions=(
                 frozenset({"set_value"}) if approval_required else frozenset()
             ),
@@ -57,6 +57,8 @@ class AgentSecurityTests(unittest.TestCase):
             expires_at_epoch=kwargs.get("expires_at_epoch"),
             delegator_tenant_id=kwargs.get("delegator_tenant_id", "tenant-1"),
             delegate_tenant_id=kwargs.get("delegate_tenant_id", "tenant-1"),
+            delegator_principal_type=kwargs.get("delegator_principal_type", "human"),
+            delegate_principal_type=kwargs.get("delegate_principal_type", "service"),
         )
 
     def _security_decision(
@@ -264,6 +266,7 @@ class AgentSecurityTests(unittest.TestCase):
             approved=True,
             verification_digest=None,
             tenant_id="tenant-1",
+        principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -399,6 +402,7 @@ class AgentSecurityTests(unittest.TestCase):
                 ActionGrant(
                     "user-a", "set_value", frozenset({"record:a"}),
                     tenant_id="tenant-A",
+                principal_type="human",
                 ),
             )
         )
@@ -406,6 +410,8 @@ class AgentSecurityTests(unittest.TestCase):
             "delegation-wrong-executor-domain", "user-a", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
             delegator_tenant_id="tenant-A", delegate_tenant_id="tenant-C",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         decision = evaluate_security(
             intent=self.intent, requester=requester, executor=executor,
@@ -423,6 +429,7 @@ class AgentSecurityTests(unittest.TestCase):
                 ActionGrant(
                     "user-a", "set_value", frozenset({"record:a"}),
                     tenant_id="tenant-B",
+                principal_type="human",
                 ),
             ),
             approval_required_actions=frozenset({"set_value"}),
@@ -431,6 +438,8 @@ class AgentSecurityTests(unittest.TestCase):
             "delegation-approval", "user-a", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
             delegator_tenant_id="tenant-B", delegate_tenant_id="tenant-B",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         approval = ApprovalEvidence(
             approval_id="approval-tenant-A",
@@ -440,6 +449,7 @@ class AgentSecurityTests(unittest.TestCase):
             approved=True,
             verification_digest="independent-check",
             tenant_id="tenant-A",
+        principal_type="human",
         )
 
         decision = evaluate_security(
@@ -459,6 +469,7 @@ class AgentSecurityTests(unittest.TestCase):
                     "set_value",
                     frozenset({"record:a"}),
                     tenant_id="tenant-A",
+                principal_type="human",
                 ),
             )
         )
@@ -470,6 +481,8 @@ class AgentSecurityTests(unittest.TestCase):
             frozenset({"record:a"}),
             delegator_tenant_id="tenant-B",
             delegate_tenant_id="tenant-B",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         requester = Principal("user-a", "human", "tenant-B")
         executor = Principal("service-agent", "service", "tenant-B")
@@ -490,6 +503,7 @@ class AgentSecurityTests(unittest.TestCase):
                     "set_value",
                     frozenset({"record:a"}),
                     tenant_id="tenant-B",
+                principal_type="human",
                 ),
             )
         )
@@ -501,6 +515,8 @@ class AgentSecurityTests(unittest.TestCase):
             frozenset({"record:a"}),
             delegator_tenant_id="tenant-A",
             delegate_tenant_id="tenant-B",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         requester = Principal("user-a", "human", "tenant-B")
         executor = Principal("service-agent", "service", "tenant-B")
@@ -515,7 +531,7 @@ class AgentSecurityTests(unittest.TestCase):
 
     def test_unbound_grant_fails_closed(self):
         policy = SecurityPolicy(
-            grants=(ActionGrant("user-a", "set_value", frozenset({"record:a"})),)
+            grants=(ActionGrant("user-a", "set_value", frozenset({"record:a"}), principal_type="human"),)
         )
         decision = evaluate_security(
             intent=self.intent, requester=self.requester, executor=self.executor,
@@ -529,6 +545,8 @@ class AgentSecurityTests(unittest.TestCase):
         delegation = Delegation(
             "unbound-delegation", "user-a", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         decision = evaluate_security(
             intent=self.intent, requester=self.requester, executor=self.executor,
@@ -543,6 +561,7 @@ class AgentSecurityTests(unittest.TestCase):
         approval = ApprovalEvidence(
             "unbound-approval", self.intent.digest, "user-a", "set_value",
             True, "independent-check",
+        principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -556,6 +575,7 @@ class AgentSecurityTests(unittest.TestCase):
                 ActionGrant(
                     "user-a", "set_value", frozenset({"record:a"}),
                     tenant_id="tenant-A",
+                principal_type="human",
                 ),
             )
         )
@@ -563,6 +583,8 @@ class AgentSecurityTests(unittest.TestCase):
             "explicit-cross-tenant", "user-a", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
             delegator_tenant_id="tenant-A", delegate_tenant_id="tenant-B",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         decision = evaluate_security(
             intent=self.intent, requester=requester, executor=executor,
@@ -574,10 +596,12 @@ class AgentSecurityTests(unittest.TestCase):
 
     def test_security_policy_digest_is_order_independent_across_tenant_grants(self):
         tenant_a = ActionGrant(
-            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-A"
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-A",
+        principal_type="human",
         )
         tenant_b = ActionGrant(
-            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-B"
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-B",
+        principal_type="human",
         )
         first = SecurityPolicy((tenant_a, tenant_b))
         reversed_order = SecurityPolicy((tenant_b, tenant_a))
@@ -610,6 +634,8 @@ class AgentSecurityTests(unittest.TestCase):
         anchor = ApprovalAnchor(
             "user-a", "tenant-1", "set_value", self.intent.digest, "self-check",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -620,6 +646,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-self", self.intent.digest, "user-a", "set_value",
             True, "self-check", tenant_id="tenant-1",
             verifier_principal_id="user-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -635,6 +663,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-unanchored", self.intent.digest, "user-a", "set_value",
             True, "fabricated-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -645,6 +675,7 @@ class AgentSecurityTests(unittest.TestCase):
         approval = ApprovalEvidence(
             "approval-unbound-verifier", self.intent.digest, "user-a", "set_value",
             True, "nonempty-check", tenant_id="tenant-1",
+        principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -656,6 +687,8 @@ class AgentSecurityTests(unittest.TestCase):
             "reviewer-a", "tenant-1", "set_value",
             self.intent.digest, "independent-check",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -666,6 +699,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-trusted", self.intent.digest, "user-a", "set_value",
             True, "independent-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertTrue(decision.accepted)
@@ -677,6 +712,8 @@ class AgentSecurityTests(unittest.TestCase):
             "service-agent", "tenant-1", "set_value",
             self.intent.digest, "executor-check",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="service",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -687,6 +724,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-executor", self.intent.digest, "user-a", "set_value",
             True, "executor-check", tenant_id="tenant-1",
             verifier_principal_id="service-agent", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="service",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -702,6 +741,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-fabricated", self.intent.digest, "user-a", "set_value",
             True, "fabricated-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -713,6 +754,8 @@ class AgentSecurityTests(unittest.TestCase):
             "reviewer-a", "tenant-1", "set_value",
             "different-intent-digest", "reviewer-check",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -723,6 +766,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-replay", self.intent.digest, "user-a", "set_value",
             True, "reviewer-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -734,6 +779,8 @@ class AgentSecurityTests(unittest.TestCase):
             "reviewer-a", "tenant-1", "other_action",
             self.intent.digest, "reviewer-check",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         policy = SecurityPolicy(
             grants=base.grants,
@@ -744,6 +791,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-wrong-action-anchor", self.intent.digest,
             "user-a", "set_value", True, "reviewer-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -753,14 +802,15 @@ class AgentSecurityTests(unittest.TestCase):
     def test_s21_approval_anchor_cannot_replay_across_requesters(self):
         policy = SecurityPolicy(
             grants=(
-                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"),
-                ActionGrant("user-b", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"),
+                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1", principal_type="human"),
+                ActionGrant("user-b", "set_value", frozenset({"record:a"}), tenant_id="tenant-1", principal_type="human"),
             ),
             approval_required_actions=frozenset({"set_value"}),
             approval_anchors=(
                 ApprovalAnchor(
                     "reviewer-a", "tenant-1", "set_value",
                     self.intent.digest, "reviewer-check",
+                verifier_principal_type="human",
                 ),
             ),
         )
@@ -769,11 +819,15 @@ class AgentSecurityTests(unittest.TestCase):
             "delegation-user-b", "user-b", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
             delegator_tenant_id="tenant-1", delegate_tenant_id="tenant-1",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         approval = ApprovalEvidence(
             "approval-user-b", self.intent.digest, "user-b", "set_value",
             True, "reviewer-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = evaluate_security(
             intent=self.intent, requester=requester, executor=self.executor,
@@ -788,13 +842,14 @@ class AgentSecurityTests(unittest.TestCase):
         requester = Principal("user-a", "human", "tenant-2")
         policy = SecurityPolicy(
             grants=(
-                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-2"),
+                ActionGrant("user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-2", principal_type="human"),
             ),
             approval_required_actions=frozenset({"set_value"}),
             approval_anchors=(
                 ApprovalAnchor(
                     "reviewer-a", "tenant-1", "set_value",
                     self.intent.digest, "reviewer-check",
+                verifier_principal_type="human",
                 ),
             ),
         )
@@ -802,11 +857,15 @@ class AgentSecurityTests(unittest.TestCase):
             "delegation-tenant-2", "user-a", "service-agent",
             frozenset({"set_value"}), frozenset({"record:a"}),
             delegator_tenant_id="tenant-2", delegate_tenant_id="tenant-1",
+        delegator_principal_type="human",
+        delegate_principal_type="service",
         )
         approval = ApprovalEvidence(
             "approval-tenant-2", self.intent.digest, "user-a", "set_value",
             True, "reviewer-check", tenant_id="tenant-2",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = evaluate_security(
             intent=self.intent, requester=requester, executor=self.executor,
@@ -827,6 +886,7 @@ class AgentSecurityTests(unittest.TestCase):
                 ApprovalAnchor(
                     "reviewer-a", "tenant-1", "set_value",
                     self.intent.digest, "legacy-unbound-check",
+                verifier_principal_type="human",
                 ),
             ),
         )
@@ -834,6 +894,8 @@ class AgentSecurityTests(unittest.TestCase):
             "approval-unbound-anchor", self.intent.digest, "user-a", "set_value",
             True, "legacy-unbound-check", tenant_id="tenant-1",
             verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
         )
         decision = self._security_decision(policy=policy, approval=approval)
         self.assertFalse(decision.accepted)
@@ -851,13 +913,18 @@ class AgentSecurityTests(unittest.TestCase):
         anchor_a = ApprovalAnchor(
             "reviewer-a", "tenant-1", "set_value", self.intent.digest, "check-a",
             requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         anchor_b = ApprovalAnchor(
             "reviewer-a", "tenant-1", "set_value", self.intent.digest, "check-b",
             requester_principal_id="user-b", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
         )
         grant = ActionGrant(
-            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1"
+            "user-a", "set_value", frozenset({"record:a"}), tenant_id="tenant-1",
+        principal_type="human",
         )
         first = SecurityPolicy((grant,), approval_anchors=(anchor_a, anchor_b))
         reversed_order = SecurityPolicy((grant,), approval_anchors=(anchor_b, anchor_a))
@@ -1013,6 +1080,171 @@ class AgentSecurityTests(unittest.TestCase):
                 artifacts=(changed,),
                 execute=target.execute,
             )
+
+
+    def test_s27_requester_principal_type_collision_is_rejected(self):
+        requester = Principal("user-a", "service", "tenant-1")
+        decision = evaluate_security(
+            intent=self.intent,
+            requester=requester,
+            executor=self.executor,
+            delegation=self._delegation(),
+            policy=self._grant(),
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "principal type not permitted for action")
+
+    def test_s28_executor_principal_type_collision_is_rejected(self):
+        executor = Principal("service-agent", "human", "tenant-1")
+        decision = evaluate_security(
+            intent=self.intent,
+            requester=self.requester,
+            executor=executor,
+            delegation=self._delegation(),
+            policy=self._grant(),
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "delegation executor type mismatch")
+
+    def test_s29_approval_requester_type_collision_is_rejected(self):
+        requester = Principal("user-a", "service", "tenant-1")
+        approval = ApprovalEvidence(
+            "approval-type-replay", self.intent.digest, "user-a", "set_value",
+            True, "verify-type", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+        principal_type="human",
+        verifier_principal_type="human",
+        )
+        anchor = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value", self.intent.digest, "verify-type",
+            requester_principal_id="user-a", requester_tenant_id="tenant-1",
+        requester_principal_type="human",
+        verifier_principal_type="human",
+        )
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a", "set_value", frozenset({"record:a"}),
+                    tenant_id="tenant-1", principal_type="service",
+                ),
+            ),
+            approval_required_actions=frozenset({"set_value"}),
+            approval_anchors=(anchor,),
+        )
+        decision = evaluate_security(
+            intent=self.intent,
+            requester=requester,
+            executor=self.executor,
+            delegation=self._delegation(delegator_principal_type="service"),
+            policy=policy,
+            state=self.state,
+            requested_resources=frozenset({"record:a"}),
+            evaluation_epoch=100,
+            approval=approval,
+        )
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval principal type mismatch")
+
+    def test_s31_approval_verifier_type_collision_is_rejected(self):
+        base = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            "approval-verifier-type", self.intent.digest, "user-a", "set_value",
+            True, "verify-type-anchor", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+            principal_type="human", verifier_principal_type="service",
+        )
+        anchor = ApprovalAnchor(
+            "reviewer-a", "tenant-1", "set_value", self.intent.digest,
+            "verify-type-anchor", requester_principal_id="user-a",
+            requester_tenant_id="tenant-1", requester_principal_type="human",
+            verifier_principal_type="human",
+        )
+        policy = SecurityPolicy(
+            grants=base.grants,
+            approval_required_actions=base.approval_required_actions,
+            approval_anchors=(anchor,),
+        )
+        decision = self._security_decision(policy=policy, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval evidence not anchored")
+
+    def test_unbound_grant_principal_type_fails_closed(self):
+        policy = SecurityPolicy(
+            grants=(
+                ActionGrant(
+                    "user-a", "set_value", frozenset({"record:a"}),
+                    tenant_id="tenant-1",
+                ),
+            )
+        )
+        decision = self._security_decision(policy=policy)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "principal type not permitted for action")
+
+    def test_unbound_delegation_principal_types_fail_closed(self):
+        delegation = Delegation(
+            "delegation-no-types", "user-a", "service-agent",
+            frozenset({"set_value"}), frozenset({"record:a"}),
+            delegator_tenant_id="tenant-1", delegate_tenant_id="tenant-1",
+        )
+        decision = self._security_decision(delegation=delegation)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "delegation requester type mismatch")
+
+    def test_unbound_approval_principal_type_fails_closed(self):
+        base = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            "approval-no-requester-type", self.intent.digest, "user-a", "set_value",
+            True, "verify-no-requester-type", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+            verifier_principal_type="human",
+        )
+        decision = self._security_decision(policy=base, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval principal type mismatch")
+
+    def test_unbound_approval_verifier_type_fails_closed(self):
+        base = self._grant(approval_required=True)
+        approval = ApprovalEvidence(
+            "approval-no-verifier-type", self.intent.digest, "user-a", "set_value",
+            True, "verify-no-verifier-type", tenant_id="tenant-1",
+            verifier_principal_id="reviewer-a", verifier_tenant_id="tenant-1",
+            principal_type="human",
+        )
+        decision = self._security_decision(policy=base, approval=approval)
+        self.assertFalse(decision.accepted)
+        self.assertEqual(decision.reason, "approval verifier required")
+
+    def test_security_policy_digest_is_order_independent_across_principal_types(self):
+        human = ActionGrant(
+            "user-a", "set_value", frozenset({"record:a"}),
+            tenant_id="tenant-1", principal_type="human",
+        )
+        service = ActionGrant(
+            "user-a", "set_value", frozenset({"record:a"}),
+            tenant_id="tenant-1", principal_type="service",
+        )
+        self.assertEqual(
+            SecurityPolicy((human, service)).digest,
+            SecurityPolicy((service, human)).digest,
+        )
+
+    def test_s30_authority_models_expose_principal_type_bindings(self):
+        from inspect import signature
+
+        self.assertIn("principal_type", signature(ActionGrant).parameters)
+        self.assertIn("delegator_principal_type", signature(Delegation).parameters)
+        self.assertIn("delegate_principal_type", signature(Delegation).parameters)
+        self.assertIn("principal_type", signature(ApprovalEvidence).parameters)
+        self.assertIn("verifier_principal_type", signature(ApprovalEvidence).parameters)
+        self.assertIn("requester_principal_type", signature(ApprovalAnchor).parameters)
+        self.assertIn("verifier_principal_type", signature(ApprovalAnchor).parameters)
 
 
 if __name__ == "__main__":
