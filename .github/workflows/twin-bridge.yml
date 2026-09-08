@@ -1,6 +1,9 @@
 name: Twin Bridge Verification
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     paths:
       - "twin/**"
