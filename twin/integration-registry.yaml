@@ -1,0 +1,190 @@
+version: 1
+name: rumbo-twin-integration-registry
+
+selection:
+  canonical_memory: "one-of"
+  required_core:
+    - twin-control-plane
+    - twin-sync
+  preferred:
+    - brainbase-mcp
+    - neura-relay-mcp
+
+candidates:
+  - id: twin-control-plane
+    display_name: Twin Control Plane
+    source: github
+    status: internal
+    role: control
+    authority_boundary: strict
+
+  - id: twin-sync
+    display_name: Twin Sync
+    source: github
+    status: internal
+    role: synchronization
+    authority_boundary: strict
+
+  - id: brainbase-mcp
+    display_name: Brainbase MCP
+    source: plugin-directory
+    status: available
+    installed: false
+    role: agent-orchestration-and-evaluation
+    auth: oauth
+    authority_boundary: independent
+
+  - id: neura-relay-mcp
+    display_name: Neura Relay MCP
+    source: plugin-directory
+    status: available
+    installed: false
+    role: pre-execution-review-and-decision-receipts
+    authority_boundary: independent
+
+  - id: memco-shared-memory
+    display_name: Memco Shared Memory
+    source: plugin-directory
+    status: available
+    installed: false
+    role: shared-memory
+    selection: candidate-canonical-memory
+
+  - id: stele
+    display_name: Stele
+    source: plugin-directory
+    status: available
+    installed: false
+    role: knowledge-graph-and-tasks
+    selection: candidate-canonical-memory
+
+  - id: basic-memory-cloud
+    display_name: Basic Memory Cloud
+    source: plugin-directory
+    status: available
+    installed: false
+    role: markdown-knowledge-base
+    selection: candidate-canonical-memory
+
+  - id: ai-wise-base
+    display_name: AI Wisebase
+    source: plugin-directory
+    status: available
+    installed: false
+    role: chat-and-file-knowledge-base
+    selection: candidate-canonical-memory
+
+  - id: memocore
+    display_name: Memocore
+    source: plugin-directory
+    status: available
+    installed: false
+    role: persistent-memory
+    selection: candidate-canonical-memory
+
+  - id: socra-cortex
+    display_name: Socra Cortex
+    source: plugin-directory
+    status: available
+    installed: false
+    role: context-modules-and-knowledge-graph
+    selection: candidate-canonical-memory
+
+  - id: workjournal
+    display_name: Workjournal
+    source: plugin-directory
+    status: available
+    installed: false
+    role: decision-journal
+
+  - id: armature
+    display_name: Armature
+    source: plugin-directory
+    status: available
+    installed: false
+    role: mcp-inspection-and-diagnostics
+
+  - id: liner
+    display_name: Agentic Search by Liner
+    source: plugin-directory
+    status: available
+    installed: false
+    role: evidence-and-research
+
+  - id: tallyfy
+    display_name: Tallyfy Workflow Automation
+    source: plugin-directory
+    status: available
+    installed: false
+    role: workflow-automation
+
+  - id: notion
+    display_name: Notion
+    source: plugin-directory
+    status: available
+    installed: false
+    role: documentation-and-knowledge
+
+  - id: supabase
+    display_name: Supabase
+    source: plugin-directory
+    status: available
+    installed: false
+    role: shared-database-and-backend
+
+  - id: deepnote
+    display_name: Deepnote
+    source: plugin-directory
+    status: available
+    installed: false
+    role: analytical-workflows
+
+  - id: webmcp
+    display_name: WebMCP
+    source: plugin-directory
+    status: available
+    installed: false
+    role: web-tooling
+
+  - id: vercel
+    display_name: Vercel
+    source: connector
+    status: installed
+    role: deployment-and-observability
+
+  - id: github
+    display_name: GitHub
+    source: connector
+    status: installed
+    role: source-of-truth
+
+  - id: gitlab
+    display_name: GitLab (Beta)
+    source: connector
+    status: installed
+    role: secondary-source
+
+  - id: atlassian-rovo
+    display_name: Atlassian Rovo
+    source: connector
+    status: installed
+    role: project-and-documentation
+
+policy:
+  do_not_enable_multiple_canonical_memories: true
+  provider_authorizations_are_independent: true
+  historical_chat_is_not_authority: true
+  fail_closed_on_required_drift: true
+  no_credentials_in_repo: true
+
+acceptance:
+  required_for_each_external_plugin:
+    - availability
+    - version
+    - required_apps
+    - auth_scope
+    - allowed_actions
+    - approval_policy
+    - privacy_retention_notes
+    - environment_a_result
+    - environment_b_result
