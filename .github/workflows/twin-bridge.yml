@@ -1,0 +1,67 @@
+name: Twin Bridge Verification
+
+on:
+  pull_request:
+    paths:
+      - "twin/**"
+      - ".agents/plugins/**"
+      - "plugins/**"
+      - "tests/**"
+      - "twin_control_plane/**"
+      - "twin_sync/**"
+      - "pyproject.toml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Validate plugin manifests
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          mp = Path(".agents/plugins/marketplace.json")
+          data = json.loads(mp.read_text(encoding="utf-8"))
+          assert data["name"] == "rumbo-twin-plugins"
+          names = {p["name"] for p in data["plugins"]}
+          assert {"twin-control-plane", "twin-sync"} <= names
+          for item in data["plugins"]:
+              assert (Path(item["source"]["path"]) / ".codex-plugin" / "plugin.json").exists()
+          print("plugin manifests: PASS")
+          PY
+
+      - name: Run regression suite
+        run: python -m unittest discover -s tests -v
+
+      - name: Run twin doctor
+        run: python twin/twin-doctor.py
+
+      - name: Verify bridge contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("twin/ENVIRONMENT_BRIDGE.md").read_text(encoding="utf-8")
+          required = [
+              "repository commit SHA",
+              "TwinSpec digest",
+              "tool-policy digest",
+              "runtime version",
+              "required test status",
+              "FAIL-CLOSED",
+          ]
+          missing = [x for x in required if x not in text]
+          assert not missing, missing
+          print("bridge contract: PASS")
+          PY
