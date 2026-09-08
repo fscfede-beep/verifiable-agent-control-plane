@@ -5,6 +5,8 @@ param(
 )
 $ErrorActionPreference="Stop"
 
-# The collector owns test execution. It writes an attestation only after the real suite passes.
 python twin/collect_attestation.py --role $Role --id $EnvironmentId --out $Output
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($LASTEXITCODE -ne 0) {
+  Write-Error "FAIL-CLOSED: test suite failed or attestation collection failed with exit code $LASTEXITCODE"
+  exit $LASTEXITCODE
+}
