@@ -45,7 +45,7 @@ class TestAttestationTestsMustPass(unittest.TestCase):
         a = {**BASE, "tests": "FAIL", "environment_role": "primary", "environment_id": "A"}
         b = {**BASE, "tests": "FAIL", "environment_role": "twin", "environment_id": "B"}
         r = self.run_gate(a, b)
-        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.returncode, 2)
         self.assertIn("environment_not_verified", r.stdout)
 
 
