@@ -61,6 +61,8 @@ class ContinuityLedgerTests(unittest.TestCase):
     def test_revision_gap_is_rejected(self) -> None:
         ledger = ContinuityLedger().append(self.state0, "discover")
         event = ContinuityEvent(
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/ledger-problem/2",
             problem_id=self.state0.problem_id,
             revision=2,
             state_digest=self.state2.digest,
@@ -93,6 +95,8 @@ class ContinuityLedgerTests(unittest.TestCase):
 
     def test_negative_revision_is_rejected(self) -> None:
         event = ContinuityEvent(
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/ledger-problem/-1",
             problem_id=self.state0.problem_id,
             revision=-1,
             state_digest=self.state0.digest,
