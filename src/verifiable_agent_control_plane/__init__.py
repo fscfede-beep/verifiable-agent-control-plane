@@ -14,7 +14,15 @@ from .core import (
     validate_intent,
     verify_transition,
 )
-from .canonical import (\n    CanonicalProblemError,\n    CanonicalProblemState,\n    Evidence,\n    SCHEMA_VERSION,\n    advance,\n    resume_state,\n)\nfrom .security import (
+from .canonical import (
+    CanonicalProblemError,
+    CanonicalProblemState,
+    Evidence,
+    SCHEMA_VERSION,
+    advance,
+    resume_state,
+)
+from .security import (
     ActionGrant,
     ApprovalAnchor,
     ApprovalEvidence,
@@ -30,7 +38,8 @@ from .canonical import (\n    CanonicalProblemError,\n    CanonicalProblemState,
 )
 
 __all__ = [
-    "ActionGrant",\n    "CanonicalProblemError",\n    "CanonicalProblemState",
+    "ActionGrant",
+    "CanonicalProblemError",\n    "CanonicalProblemState",
     "ApprovalAnchor",
     "ApprovalEvidence",
     "CanonicalState",
