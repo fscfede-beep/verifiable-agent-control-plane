@@ -86,6 +86,8 @@ class ContinuityLedger:
         previous: str | None = None
         expected_revision: int | None = None
         expected_problem_id: str | None = None
+        if self.events and self.events[0].revision != 0:
+            raise CanonicalProblemError("continuity ledger must start at revision 0")
         for event in self.events:
             if not event.verify():
                 raise CanonicalProblemError("continuity ledger event hash mismatch")
