@@ -64,7 +64,7 @@ def main() -> int:
         print(json.dumps({"result": "FAIL-CLOSED", "reason": "environment_not_verified"}, indent=2))
         return 2
 
-    checked = tuple(key for key in REQUIRED if key not in {"schema", "platform", "python"})
+    checked = tuple(key for key in REQUIRED if key != "schema")
     mismatches = {key: {"A": a[key], "B": b[key]} for key in checked if a[key] != b[key]}
 
     result = "PASS" if not mismatches else "FAIL-CLOSED"
