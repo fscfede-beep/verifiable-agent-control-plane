@@ -40,11 +40,10 @@ class CanonicalContinuityTests(unittest.TestCase):
             digest=self.evidence.digest,
             status="stale",
         )
-        state = advance(self.state, status="VERIFIED", evidence=(stale,))
         with self.assertRaisesRegex(
             CanonicalProblemError, "VERIFIED state requires every evidence item"
         ):
-            state.validate()
+            advance(self.state, status="VERIFIED", evidence=(stale,))
 
     def test_secret_like_material_fails_closed(self) -> None:
         state = CanonicalProblemState(
