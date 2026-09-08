@@ -47,6 +47,18 @@ class ContinuityLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(CanonicalProblemError, "event hash mismatch"):
             bad.verify()
 
+    def test_mixed_projects_fail_closed(self) -> None:
+        ledger = ContinuityLedger().append(self.state0, "discover", project="alpha")
+        event = ContinuityEvent.build(
+            state=self.state1,
+            action="collect",
+            previous_event_hash=ledger.events[-1].event_hash,
+            project="beta",
+        )
+        bad = ContinuityLedger(ledger.events + (event,))
+        with self.assertRaisesRegex(CanonicalProblemError, "project mismatch"):
+            bad.verify()
+
     def test_mixed_problem_ids_fail_closed(self) -> None:
         ledger = ContinuityLedger().append(self.state0, "discover")
         event = ContinuityEvent.build(
