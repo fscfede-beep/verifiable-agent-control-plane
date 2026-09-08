@@ -108,6 +108,8 @@ class CanonicalProblemState:
             raise CanonicalProblemError("canonical state requires RUMBO IA record id")
         if not self.brand_record_id.startswith(BRAND_NAMESPACE + "/"):
             raise CanonicalProblemError("invalid RUMBO IA record id")
+        if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
+            raise CanonicalProblemError("RUMBO IA record revision mismatch")
         if self.status not in _STATUS_VALUES:
             raise CanonicalProblemError("invalid canonical status")
         if not all(isinstance(item, str) and item for item in (
@@ -156,10 +158,26 @@ class CanonicalProblemState:
             )
             for item in raw_evidence
         )
+        required = (
+            "problem_id",
+            "brand",
+            "brand_record_id",
+            "title",
+            "objective",
+            "status",
+            "revision",
+            "created_at",
+            "updated_at",
+        )
+        missing = [key for key in required if key not in data]
+        if missing:
+            raise CanonicalProblemError(
+                "canonical state missing required fields: " + ", ".join(missing)
+            )
         state = cls(
             problem_id=str(data["problem_id"]),
-            brand=str(data.get("brand", "")),
-            brand_record_id=data.get("brand_record_id"),
+            brand=str(data["brand"]),
+            brand_record_id=str(data["brand_record_id"]),
             title=str(data["title"]),
             objective=str(data["objective"]),
             status=str(data["status"]),
