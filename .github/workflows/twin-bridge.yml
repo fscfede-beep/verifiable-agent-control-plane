@@ -1,8 +1,12 @@
 name: Twin Bridge Verification
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     paths:
+      - ".github/workflows/**"
       - "twin/**"
       - ".agents/plugins/**"
       - "plugins/**"
@@ -29,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-python@v5
         with:
@@ -98,7 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-python@v5
         with:
