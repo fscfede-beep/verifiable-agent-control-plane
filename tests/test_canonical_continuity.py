@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from verifiable_agent_control_plane import (
     CanonicalProblemError,
@@ -6,6 +8,8 @@ from verifiable_agent_control_plane import (
     Evidence,
     advance,
     resume_state,
+    save_state,
+    load_state,
 )
 
 
@@ -53,6 +57,23 @@ class CanonicalContinuityTests(unittest.TestCase):
         self.assertEqual(restored.digest, self.state.digest)
         resumed = resume_state(restored)
         self.assertEqual(resumed["state_digest"], self.state.digest)
+
+    def test_disk_store_round_trip_is_atomic_and_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "canonical" / "state.json"
+            save_state(self.state, path)
+            self.assertTrue(path.exists())
+            restored = load_state(path)
+            self.assertEqual(restored.to_dict(), self.state.to_dict())
+            self.assertFalse(path.with_name(".state.json.tmp").exists())
+
+    def test_disk_store_rejects_missing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing.json"
+            with self.assertRaisesRegex(
+                CanonicalProblemError, "cannot read canonical state"
+            ):
+                load_state(path)
 
     def test_round_trip_rejects_unknown_schema(self) -> None:
         data = self.state.to_dict()
