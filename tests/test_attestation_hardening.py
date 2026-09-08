@@ -1,8 +1,17 @@
-import json, subprocess, sys, tempfile
+import json, subprocess, sys, tempfile, unittest
 from pathlib import Path
-import unittest
 
-BASE={"repository":"fscfede-beep/verifiable-agent-control-plane","commit":"abc","python":"3.13","twin_bridge_sha256":"x","twin_config_sha256":"y","tests":"PASS"}
+BASE={
+    "repository":"fscfede-beep/verifiable-agent-control-plane",
+    "commit":"abc",
+    "python":"3.13",
+    "platform":"Linux-test",
+    "ag_file_sha256":"a",
+    "integration_registry_sha256":"b",
+    "memory_policy_sha256":"c",
+    "working_tree_clean":True,
+    "tests":"PASS",
+}
 
 class TestAttestationHardening(unittest.TestCase):
     def run_gate(self,a,b):
@@ -21,7 +30,7 @@ class TestAttestationHardening(unittest.TestCase):
         a={**BASE,"environment_role":"primary"}
         b={**BASE,"repository":"other/repo","environment_role":"twin"}
         r=self.run_gate(a,b)
-        self.assertNotEqual(r.returncode,0)
+        self.assertEqual(r.returncode,2)
         self.assertIn("unexpected_repository",r.stdout)
 
     def test_fail_for_required_drift(self):
