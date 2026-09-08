@@ -45,6 +45,29 @@ class CanonicalContinuityTests(unittest.TestCase):
         ):
             advance(self.state, status="VERIFIED", evidence=(stale,))
 
+
+    def test_round_trip_json_preserves_canonical_state_and_digest(self) -> None:
+        payload = self.state.to_json()
+        restored = CanonicalProblemState.from_json(payload)
+        self.assertEqual(restored.to_dict(), self.state.to_dict())
+        self.assertEqual(restored.digest, self.state.digest)
+        resumed = resume_state(restored)
+        self.assertEqual(resumed["state_digest"], self.state.digest)
+
+    def test_round_trip_rejects_unknown_schema(self) -> None:
+        data = self.state.to_dict()
+        data["schema_version"] = "999.0"
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "unsupported canonical schema version"
+        ):
+            CanonicalProblemState.from_dict(data)
+
+    def test_round_trip_rejects_malformed_json(self) -> None:
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "invalid canonical JSON"
+        ):
+            CanonicalProblemState.from_json("{not-json}")
+
     def test_secret_like_material_fails_closed(self) -> None:
         state = CanonicalProblemState(
             problem_id="problem-002",

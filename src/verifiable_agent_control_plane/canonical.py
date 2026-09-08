@@ -127,6 +127,57 @@ class CanonicalProblemState:
                 "VERIFIED state requires every evidence item to be verified"
             )
 
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "CanonicalProblemState":
+        """Reconstruct canonical state from a durable, sanitized record."""
+        if data.get("schema_version") != SCHEMA_VERSION:
+            raise CanonicalProblemError("unsupported canonical schema version")
+        raw_evidence = data.get("evidence", [])
+        if not isinstance(raw_evidence, list):
+            raise CanonicalProblemError("evidence must be a list")
+        evidence = tuple(
+            Evidence(
+                source=item["source"],
+                kind=item["kind"],
+                locator=item["locator"],
+                observed_at=item["observed_at"],
+                digest=item["digest"],
+                status=item.get("status", "verified"),
+            )
+            for item in raw_evidence
+        )
+        state = cls(
+            problem_id=str(data["problem_id"]),
+            title=str(data["title"]),
+            objective=str(data["objective"]),
+            status=str(data["status"]),
+            revision=int(data["revision"]),
+            created_at=str(data["created_at"]),
+            updated_at=str(data["updated_at"]),
+            evidence=evidence,
+            decisions=tuple(data.get("decisions", [])),
+            artifacts=tuple(data.get("artifacts", [])),
+            verification=dict(data.get("verification", {})),
+            next_actions=tuple(data.get("next_actions", [])),
+        )
+        state.validate()
+        return state
+
+    @classmethod
+    def from_json(cls, payload: str) -> "CanonicalProblemState":
+        """Reconstruct state from serialized JSON."""
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise CanonicalProblemError("invalid canonical JSON") from exc
+        if not isinstance(data, Mapping):
+            raise CanonicalProblemError("canonical JSON root must be an object")
+        return cls.from_dict(data)
+
+    def to_json(self) -> str:
+        """Serialize canonical state deterministically for cross-chat transfer."""
+        return _stable_json(self.to_dict())
+
     @property
     def digest(self) -> str:
         self.validate()
