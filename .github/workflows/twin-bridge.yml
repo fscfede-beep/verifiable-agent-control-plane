@@ -6,6 +6,7 @@ on:
       - main
   pull_request:
     paths:
+      - ".github/workflows/**"
       - "twin/**"
       - ".agents/plugins/**"
       - "plugins/**"
