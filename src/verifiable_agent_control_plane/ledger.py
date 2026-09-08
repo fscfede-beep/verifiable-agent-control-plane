@@ -58,6 +58,10 @@ class ContinuityEvent:
     def verify(self) -> bool:
         if self.brand != BRAND or not self.brand_record_id:
             return False
+        if not self.brand_record_id.startswith("RUMBO-IA/"):
+            return False
+        if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
+            return False
         if not self.problem_id or not self.state_digest or not self.action:
             return False
         if self.revision < 0:
