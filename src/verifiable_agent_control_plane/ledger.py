@@ -5,7 +5,7 @@ from hashlib import sha256
 import json
 from typing import Any, Mapping
 
-from .canonical import CanonicalProblemState, CanonicalProblemError, BRAND
+from .canonical import CanonicalProblemError, CanonicalProblemState, BRAND
 
 BRAND_NAMESPACE = "RUMBO-IA"
 DEFAULT_PROJECT = "verifiable-agent-control-plane"
@@ -17,6 +17,10 @@ def _stable(value: Any) -> str:
 
 def _hash(value: Any) -> str:
     return sha256(_stable(value).encode("utf-8")).hexdigest()
+
+
+def _record_id(*, project: str, problem_id: str, revision: int) -> str:
+    return f"{BRAND_NAMESPACE}/{project}/{problem_id}/{revision}"
 
 
 @dataclass(frozen=True)
@@ -47,7 +51,11 @@ class ContinuityEvent:
             raise CanonicalProblemError("continuity event requires RUMBO IA state")
         if not isinstance(project, str) or not project or "/" in project:
             raise CanonicalProblemError("invalid RUMBO IA project")
-        brand_record_id = f"{BRAND_NAMESPACE}/{project}/{state.problem_id}/{state.revision}"
+        brand_record_id = _record_id(
+            project=project,
+            problem_id=state.problem_id,
+            revision=state.revision,
+        )
         base = {
             "brand": BRAND,
             "brand_record_id": brand_record_id,
@@ -63,15 +71,17 @@ class ContinuityEvent:
     def verify(self) -> bool:
         if self.brand != BRAND or not self.brand_record_id:
             return False
-        if not self.brand_record_id.startswith(BRAND_NAMESPACE + "/"):
-            return False
-        if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
-            return False
         if not self.project or "/" in self.project:
             return False
         if not self.problem_id or not self.state_digest or not self.action:
             return False
         if self.revision < 0:
+            return False
+        if self.brand_record_id != _record_id(
+            project=self.project,
+            problem_id=self.problem_id,
+            revision=self.revision,
+        ):
             return False
         if len(self.state_digest) != 64:
             return False
