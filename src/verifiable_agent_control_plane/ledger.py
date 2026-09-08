@@ -83,11 +83,11 @@ class ContinuityEvent:
             revision=self.revision,
         ):
             return False
-        if len(self.state_digest) != 64:
+        if not self.state_digest.startswith("sha256:") or len(self.state_digest) != 71:
             return False
         try:
-            int(self.state_digest, 16)
-        except ValueError:
+            int(self.state_digest.split(":", 1)[1], 16)
+        except (IndexError, ValueError):
             return False
         base = {
             "brand": self.brand,
