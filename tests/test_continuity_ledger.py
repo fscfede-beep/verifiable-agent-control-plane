@@ -180,6 +180,28 @@ class ContinuityLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(CanonicalProblemError, "missing required fields"):
             ContinuityLedger.from_json(json.dumps(data))
 
+    def test_invalid_digest_is_rejected(self):
+        event = ContinuityEvent(
+            problem_id=self.state0.problem_id,
+            revision=0,
+            state_digest="z" * 64,
+            action="discover",
+            previous_event_hash=None,
+            event_hash="0" * 64,
+        )
+        self.assertFalse(event.verify())
+
+    def test_negative_revision_is_rejected(self):
+        event = ContinuityEvent(
+            problem_id=self.state0.problem_id,
+            revision=-1,
+            state_digest=self.state0.digest,
+            action="discover",
+            previous_event_hash=None,
+            event_hash="0" * 64,
+        )
+        self.assertFalse(event.verify())
+
     def test_empty_action_fails_closed(self):
         with self.assertRaisesRegex(CanonicalProblemError, "action must be non-empty"):
             ContinuityEvent.build(
