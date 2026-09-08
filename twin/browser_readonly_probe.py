@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
-"""
-Read-only Chromium CDP probe for Twin environment discovery.
-
-Security boundary:
-- Connects only to a localhost CDP endpoint.
-- Reads page metadata and bounded visible body text.
-- Never reads cookies, browser storage, authentication headers, or tokens.
-- Does not click, navigate, submit forms, or mutate pages.
-- Intended to inventory already-open ChatGPT/Codex tabs so A/B can be compared.
-"""
 from __future__ import annotations
 
 import argparse
 import json
+import re
+import urllib.parse
 import urllib.request
 import websocket
 
+EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
+
 def get_targets(endpoint: str):
-    url = endpoint.rstrip("/") + "/json/list"
-    with urllib.request.urlopen(url, timeout=3) as r:
+    with urllib.request.urlopen(endpoint.rstrip("/") + "/json/list", timeout=3) as r:
         return json.load(r)
 
 def cdp_eval(ws, expression: str):
@@ -26,11 +19,7 @@ def cdp_eval(ws, expression: str):
     ws.send(json.dumps({
         "id": cdp_eval.counter,
         "method": "Runtime.evaluate",
-        "params": {
-            "expression": expression,
-            "returnByValue": True,
-            "awaitPromise": True,
-        },
+        "params": {"expression": expression, "returnByValue": True, "awaitPromise": True},
     }))
     while True:
         msg = json.loads(ws.recv())
@@ -38,16 +27,22 @@ def cdp_eval(ws, expression: str):
             return msg.get("result", {}).get("result", {}).get("value")
 cdp_eval.counter = 0
 
+def safe_visible_text(text: str) -> str:
+    return EMAIL_RE.sub("[REDACTED_EMAIL]", text or "")
+
 def probe_target(target):
     ws = websocket.create_connection(target["webSocketDebuggerUrl"], timeout=3)
     try:
-        title = cdp_eval(ws, "document.title")
-        url = cdp_eval(ws, "location.href")
-        text = cdp_eval(ws, "document.body ? document.body.innerText.slice(0, 12000) : ''")
+        title = cdp_eval(ws, "document.title") or ""
+        url = cdp_eval(ws, "location.href") or ""
+        body = cdp_eval(ws, "document.body ? document.body.innerText.slice(0,12000) : ''") or ""
+        parsed = urllib.parse.urlparse(url)
         return {
             "title": title,
-            "url": url,
-            "visible_text_sample": text,
+            "scheme": parsed.scheme,
+            "host": parsed.netloc,
+            "path": parsed.path,
+            "visible_text_sample": safe_visible_text(body),
         }
     finally:
         ws.close()
@@ -58,15 +53,14 @@ def main():
     p.add_argument("--out", default="browser_probe.json")
     args = p.parse_args()
 
-    targets = get_targets(args.endpoint)
     results = []
-    for t in targets:
-        if t.get("type") != "page" or "webSocketDebuggerUrl" not in t:
+    for target in get_targets(args.endpoint):
+        if target.get("type") != "page" or "webSocketDebuggerUrl" not in target:
             continue
         try:
-            results.append(probe_target(t))
-        except Exception as e:
-            results.append({"title": t.get("title"), "url": t.get("url"), "error": str(e)})
+            results.append(probe_target(target))
+        except Exception as exc:
+            results.append({"title": target.get("title"), "error": str(exc)})
 
     report = {
         "mode": "READ_ONLY",
@@ -78,6 +72,7 @@ def main():
             "navigation": False,
             "clicks": False,
             "form_submission": False,
+            "email_addresses_redacted": True,
         },
     }
     with open(args.out, "w", encoding="utf-8") as f:
