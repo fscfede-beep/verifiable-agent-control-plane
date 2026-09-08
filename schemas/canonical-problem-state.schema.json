@@ -1,10 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Canonical Cross-Chat Problem State",
+  "description": "RUMBO IA canonical solution provenance contract.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "brand",
+    "brand_record_id",
     "problem_id",
     "title",
     "objective",
@@ -19,7 +22,9 @@
     "next_actions"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
+    "brand": {"const": "RUMBO IA"},
+    "brand_record_id": {"type": "string", "pattern": "^RUMBO-IA/[^/]+/[^/]+/[0-9]+$"},
     "problem_id": {"type": "string", "minLength": 1},
     "title": {"type": "string", "minLength": 1},
     "objective": {"type": "string", "minLength": 1},
