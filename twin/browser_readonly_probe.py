@@ -4,8 +4,8 @@ Read-only Chromium CDP probe for Twin environment discovery.
 
 Security boundary:
 - Connects only to a localhost CDP endpoint.
-- Reads page metadata and visible body text.
-- Never calls Network.getAllCookies or reads storage/cookies/tokens.
+- Reads page metadata and bounded visible body text.
+- Never reads cookies, browser storage, authentication headers, or tokens.
 - Does not click, navigate, submit forms, or mutate pages.
 - Intended to inventory already-open ChatGPT/Codex tabs so A/B can be compared.
 """
