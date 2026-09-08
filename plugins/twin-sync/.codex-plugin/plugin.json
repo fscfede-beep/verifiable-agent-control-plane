@@ -1,0 +1,32 @@
+{
+  "name": "twin-sync",
+  "version": "0.1.0",
+  "description": "Compare two ChatGPT exports and derive a common functional twin candidate.",
+  "author": {
+    "name": "RUMBO IA"
+  },
+  "repository": "https://github.com/fscfede-beep/verifiable-agent-control-plane",
+  "license": "MIT",
+  "keywords": [
+    "twin",
+    "sync",
+    "ChatGPT",
+    "export",
+    "comparison"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Twin Sync",
+    "shortDescription": "Compare two exports and build a common twin candidate.",
+    "longDescription": "Compares preferences, recurring intents, evidence candidates and configuration signals while keeping historical data separate from authority.",
+    "developerName": "RUMBO IA",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Compare two ChatGPT exports and produce a twin report.",
+      "Build the common TwinSpec candidate and list divergences."
+    ]
+  }
+}
