@@ -96,6 +96,9 @@ class ContinuityLedgerTests(unittest.TestCase):
 
     def test_invalid_digest_is_rejected(self) -> None:
         event = ContinuityEvent(
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/ledger-problem/0",
+            project="verifiable-agent-control-plane",
             problem_id=self.state0.problem_id,
             revision=0,
             state_digest="z" * 64,
