@@ -26,12 +26,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install project
+        run: python -m pip install .
+
       - name: Validate plugin manifests
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-
           mp = Path(".agents/plugins/marketplace.json")
           data = json.loads(mp.read_text(encoding="utf-8"))
           assert data["name"] == "rumbo-twin-plugins"
