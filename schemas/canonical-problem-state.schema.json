@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical Cross-Chat Problem State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "problem_id",
+    "title",
+    "objective",
+    "status",
+    "revision",
+    "created_at",
+    "updated_at",
+    "evidence",
+    "decisions",
+    "artifacts",
+    "verification",
+    "next_actions"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "problem_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "objective": {"type": "string", "minLength": 1},
+    "status": {
+      "enum": [
+        "DISCOVERY",
+        "EVIDENCE",
+        "RECONCILIATION",
+        "SOLVING",
+        "VERIFYING",
+        "VERIFIED",
+        "VERIFIED_PENDING_EXTERNAL_GATE",
+        "FAIL_CLOSED"
+      ]
+    },
+    "revision": {"type": "integer", "minimum": 0},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "kind", "locator", "observed_at", "digest", "status"],
+        "properties": {
+          "source": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "locator": {"type": "string", "minLength": 1},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "status": {"enum": ["verified", "stale", "contradictory", "unavailable"]}
+        }
+      }
+    },
+    "decisions": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "locator"],
+        "properties": {
+          "kind": {"type": "string", "minLength": 1},
+          "locator": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "verification": {"type": "object"},
+    "next_actions": {"type": "array", "items": {"type": "string"}}
+  }
+}
