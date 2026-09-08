@@ -22,7 +22,11 @@ from .canonical import (
     advance,
     resume_state,
 )
-from .ledger import (\n    ContinuityEvent,\n    ContinuityLedger,\n)\nfrom .security import (
+from .ledger import (
+    ContinuityEvent,
+    ContinuityLedger,
+)
+from .security import (
     ActionGrant,
     ApprovalAnchor,
     ApprovalEvidence,
