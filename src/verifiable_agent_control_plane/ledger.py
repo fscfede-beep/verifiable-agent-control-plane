@@ -7,6 +7,9 @@ from typing import Any, Mapping
 
 from .canonical import CanonicalProblemState, CanonicalProblemError, BRAND
 
+BRAND_NAMESPACE = "RUMBO-IA"
+DEFAULT_PROJECT = "verifiable-agent-control-plane"
+
 
 def _stable(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -34,19 +37,19 @@ class ContinuityEvent:
         state: CanonicalProblemState,
         action: str,
         previous_event_hash: str | None,
+        project: str = DEFAULT_PROJECT,
     ) -> "ContinuityEvent":
         state.validate()
         if not isinstance(action, str) or not action:
             raise CanonicalProblemError("continuity event action must be non-empty")
-        if state.brand != BRAND or not state.brand_record_id:
-            raise CanonicalProblemError("continuity event requires RUMBO IA provenance")
-        if not state.brand_record_id.startswith("RUMBO-IA/"):
-            raise CanonicalProblemError("invalid RUMBO IA record id")
-        if state.brand_record_id.rsplit("/", 1)[-1] != str(state.revision):
-            raise CanonicalProblemError("RUMBO IA record revision mismatch")
+        if state.brand != BRAND:
+            raise CanonicalProblemError("continuity event requires RUMBO IA state")
+        if not isinstance(project, str) or not project or "/" in project:
+            raise CanonicalProblemError("invalid RUMBO IA project")
+        brand_record_id = f"{BRAND_NAMESPACE}/{project}/{state.problem_id}/{state.revision}"
         base = {
-            "brand": state.brand,
-            "brand_record_id": state.brand_record_id,
+            "brand": BRAND,
+            "brand_record_id": brand_record_id,
             "problem_id": state.problem_id,
             "revision": state.revision,
             "state_digest": state.digest,
@@ -58,7 +61,7 @@ class ContinuityEvent:
     def verify(self) -> bool:
         if self.brand != BRAND or not self.brand_record_id:
             return False
-        if not self.brand_record_id.startswith("RUMBO-IA/"):
+        if not self.brand_record_id.startswith(BRAND_NAMESPACE + "/"):
             return False
         if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
             return False
@@ -100,13 +103,19 @@ class ContinuityEvent:
 class ContinuityLedger:
     events: tuple[ContinuityEvent, ...] = ()
 
-    def append(self, state: CanonicalProblemState, action: str) -> "ContinuityLedger":
+    def append(
+        self,
+        state: CanonicalProblemState,
+        action: str,
+        project: str = DEFAULT_PROJECT,
+    ) -> "ContinuityLedger":
         state.validate()
         previous = self.events[-1].event_hash if self.events else None
         event = ContinuityEvent.build(
             state=state,
             action=action,
             previous_event_hash=previous,
+            project=project,
         )
         return ContinuityLedger(self.events + (event,))
 
