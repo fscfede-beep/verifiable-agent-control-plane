@@ -87,8 +87,8 @@ class Evidence:
 @dataclass(frozen=True)
 class CanonicalProblemState:
     problem_id: str
-    brand: str = BRAND
-    brand_record_id: str | None = None
+    brand: str
+    brand_record_id: str
     title: str
     objective: str
     status: str
