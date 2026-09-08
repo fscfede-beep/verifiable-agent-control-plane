@@ -2,7 +2,7 @@
 
 Use the same repository and branch in both Codex environments.
 
-## 1. Clone / open the same source
+## 1. Shared source
 
 Repository:
 https://github.com/fscfede-beep/verifiable-agent-control-plane
@@ -10,47 +10,71 @@ https://github.com/fscfede-beep/verifiable-agent-control-plane
 Branch:
 twin/dual-environment-bridge
 
-## 2. Register the same marketplace
+## 2. Two Codex environments
 
-Codex CLI:
+Create Environment A and Environment B in the Codex UI under Settings > Environments.
+Point both environments at the same repository and branch.
 
-```bash
-codex plugin marketplace add fscfede-beep/verifiable-agent-control-plane --ref twin/dual-environment-bridge
-codex plugin marketplace list
-```
+The environment identifiers are intentionally NOT stored in GitHub.
 
-The repository contains:
-`./.agents/plugins/marketplace.json`
+## 3. Own plugins
 
-## 3. Install the same twin plugins
+This branch contains two plugin packages:
 
-In the ChatGPT desktop Plugins Directory, select the `RUMBO Twin Plugins` marketplace and install:
 - Twin Control Plane
 - Twin Sync
 
-Equivalent local policy is AVAILABLE / authentication ON_INSTALL.
+and a Codex marketplace manifest at:
+`.agents/plugins/marketplace.json`
 
-## 4. Run the equivalence gate
+A local/Codex-specific plugin may need to be imported or made available by the applicable
+workspace/admin controls before it can be used.
 
-Both environments must use:
-- the same commit SHA;
-- the same TwinSpec;
-- the same tool policy;
-- the same runtime baseline;
-- the same tests.
+## 4. Workspace marketplace (only where applicable)
 
-Any mismatch is FAIL-CLOSED.
+OpenAI currently documents GitHub marketplace import under **Workspace settings > Plugins**
+for eligible workspace administrators. This is a workspace-admin feature; it is not a
+general mechanism for merging two personal ChatGPT accounts.
 
-## 5. Important account boundary
+A synced marketplace updates plugin content, but it does not transfer account identity,
+provider credentials, OAuth authorization, cookies, sessions, or repository permissions.
 
-This creates a shared plugin/workflow source. It does NOT transfer provider credentials,
-account sessions, cookies, OAuth tokens, or repository permissions.
+## 5. App authorization
 
-Each ChatGPT/Codex account must authorize the apps it uses with its own account.
+If a plugin includes an app, each account/workspace must satisfy that app's own availability,
+provider authorization, role access, action controls and approval requirements.
 
-## 6. Workspace marketplace option
+## 6. Equivalence gate
 
-For a managed workspace where you are an admin, OpenAI also supports importing
-`.agents/plugins/marketplace.json` from a GitHub repository in Workspace settings > Plugins.
-That mechanism synchronizes plugin content but still does not connect member accounts or
-grant app permissions automatically.
+Both environments must report:
+
+- repository commit SHA;
+- TwinSpec digest;
+- tool-policy digest;
+- runtime baseline;
+- test status;
+- installed Twin plugin versions.
+
+Any required mismatch is FAIL-CLOSED.
+
+## 7. Security
+
+Never commit:
+- passwords
+- cookies
+- OAuth/access tokens
+- API keys
+- recovery codes
+- session identifiers
+
+## 8. Verification command
+
+Run from each environment:
+
+```bash
+python twin/twin-doctor.py
+python -m unittest discover -s tests -v
+```
+
+Compare the outputs. Identical required evidence is the acceptance condition for a
+functional twin.
