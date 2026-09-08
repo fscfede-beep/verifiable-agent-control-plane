@@ -75,6 +75,7 @@ class ContinuityLedgerTests(unittest.TestCase):
         event = ContinuityEvent(
             brand=BRAND,
             brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/ledger-problem/2",
+            project="verifiable-agent-control-plane",
             problem_id=self.state0.problem_id,
             revision=2,
             state_digest=self.state2.digest,
@@ -112,6 +113,7 @@ class ContinuityLedgerTests(unittest.TestCase):
         event = ContinuityEvent(
             brand=BRAND,
             brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/ledger-problem/-1",
+            project="verifiable-agent-control-plane",
             problem_id=self.state0.problem_id,
             revision=-1,
             state_digest=self.state0.digest,
@@ -128,6 +130,30 @@ class ContinuityLedgerTests(unittest.TestCase):
                 action="",
                 previous_event_hash=None,
             )
+
+    def test_record_id_identity_mismatch_is_rejected(self) -> None:
+        event = ContinuityEvent.build(
+            state=self.state0,
+            action="discover",
+            previous_event_hash=None,
+        )
+        forged = replace(
+            event,
+            brand_record_id=f"{BRAND_NAMESPACE}/other-project/ledger-problem/0",
+        )
+        self.assertFalse(forged.verify())
+
+    def test_record_id_problem_mismatch_is_rejected(self) -> None:
+        event = ContinuityEvent.build(
+            state=self.state0,
+            action="discover",
+            previous_event_hash=None,
+        )
+        forged = replace(
+            event,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/other-problem/0",
+        )
+        self.assertFalse(forged.verify())
 
 
 if __name__ == "__main__":
