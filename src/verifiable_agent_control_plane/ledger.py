@@ -48,6 +48,16 @@ class ContinuityEvent:
         return cls(event_hash=_hash(base), **base)
 
     def verify(self) -> bool:
+        if not self.problem_id or not self.state_digest or not self.action:
+            return False
+        if self.revision < 0:
+            return False
+        if len(self.state_digest) != 64:
+            return False
+        try:
+            int(self.state_digest, 16)
+        except ValueError:
+            return False
         base = {
             "problem_id": self.problem_id,
             "revision": self.revision,
