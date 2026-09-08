@@ -1,6 +1,5 @@
-import json, subprocess, sys, tempfile
+import json, subprocess, sys, tempfile, unittest
 from pathlib import Path
-import unittest
 
 class TestCollector(unittest.TestCase):
     def test_collector_is_fast_and_uses_explicit_test_result(self):
@@ -13,10 +12,12 @@ class TestCollector(unittest.TestCase):
             ],capture_output=True,text=True,timeout=10)
             self.assertEqual(r.returncode,0,r.stdout+r.stderr)
             d=json.loads(out.read_text(encoding="utf-8"))
-            self.assertEqual(d["schema"],"rumbo-twin-attestation/v2")
+            self.assertEqual(d["schema"],"rumbo-twin-attestation/v3")
             self.assertEqual(d["tests"],"PASS")
+            self.assertTrue(d["working_tree_clean"])
             self.assertEqual(d["environment_role"],"primary")
             self.assertEqual(d["environment_id"],"A")
+            self.assertIn("platform",d)
 
     def test_tests_result_is_required(self):
         with tempfile.TemporaryDirectory() as td:
