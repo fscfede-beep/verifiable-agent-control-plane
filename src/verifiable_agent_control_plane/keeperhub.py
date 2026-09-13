@@ -122,6 +122,11 @@ class KeeperHubClient:
             detail = parsed.get("detail", "KeeperHub request failed")
             request_id = parsed.get("request_id") or exc.headers.get("x-request-id")
             raise KeeperHubError(code, detail, request_id) from exc
+        except urllib.error.URLError as exc:
+            raise KeeperHubError(
+                "transport_error",
+                f"KeeperHub transport failed: {exc.reason}",
+            ) from exc
 
     def probe_chains(self) -> tuple[list[dict[str, Any]], KeeperHubReceipt]:
         response, headers = self._request("GET", "/api/chains", auth_required=False)
@@ -156,13 +161,21 @@ class KeeperHubClient:
             )
         if not workflow_id.strip():
             raise KeeperHubError("invalid_workflow_id", "workflow_id must be non-empty")
+        if not self._api_key:
+            raise KeeperHubError("missing_api_key", "KEEPERHUB_API_KEY is required")
+
+        # Consume the one-shot budget before crossing the network boundary. If a
+        # transport failure happens after KeeperHub accepted the POST but before
+        # this client receives the response, the outcome is ambiguous. Retrying
+        # automatically could execute the workflow twice, so this client refuses
+        # a second start and requires external execution-history reconciliation.
+        self._execution_count += 1
 
         path = f"/api/workflows/{urllib.parse.quote(workflow_id, safe='')}/execute"
         body = {"input": input_data or {}}
         response, headers = self._request("POST", path, body=body, auth_required=True)
         if not isinstance(response, dict) or not response.get("executionId"):
             raise KeeperHubError("missing_execution_id", "Execution response omitted executionId")
-        self._execution_count += 1
         return response, self._receipt("execute_workflow", path, body, response, headers)
 
     def wait_for_execution(
@@ -203,7 +216,7 @@ class KeeperHubClient:
             raise ValueError("chain_id, to_address, and amount are required")
         payload: dict[str, Any] = {
             "chainId": str(chain_id),
-            "toAddress": to_address,
+            "recipientAddress": to_address,
             "amount": amount,
             "simulate": True,
         }
