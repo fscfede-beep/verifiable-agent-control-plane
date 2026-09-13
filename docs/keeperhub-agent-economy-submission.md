@@ -1,9 +1,8 @@
 # KeeperHub Agent Economy Hackathon — Submission Packet
 
-Status: `SUBMISSION_READY_EXCEPT_EXTERNAL_PROOF`
+Status: `PACKET_READY / MAIN_TRACK_ELIGIBILITY_NOT_PROVEN / EXTERNAL_PROOF_REQUIRED`
 
-This document is a submission draft, not evidence that the hackathon entry has been filed.
-Fields marked **REQUIRED PROOF** must be replaced with observed evidence before submission.
+This document is a submission draft, not evidence that an entry has been filed. Fields marked **REQUIRED PROOF** must be replaced with observed evidence before submission.
 
 ## Project
 
@@ -11,11 +10,26 @@ Fields marked **REQUIRED PROOF** must be replaced with observed evidence before 
 
 A fail-closed agent control plane that separates probabilistic intent from deterministic execution. RUMBO decides whether an action is authorized, KeeperHub executes the reviewed workflow, and the result is read back into a hash-bound evidence receipt before the action is treated as complete.
 
-## Main-track fit
+## Track decision
+
+The current integration is technically strong but main-track eligibility is not yet proven.
+
+The event brief defines a "live project" as a project that exists and is running, with users, a deployed product, or an active protocol behind it. The public `verifiable-agent-control-plane` repository predates the hackathon and has a tagged `v0.2.0` release, but a public repository/release alone is not evidence of users, a deployed product, or an active protocol.
+
+Therefore:
+
+- existing-project provenance: **PASS**;
+- KeeperHub integration in that project: **PASS**;
+- live-project requirement: **NOT_PROVEN**;
+- main-track submission: **FAIL-CLOSED until live-project evidence exists**.
+
+Do not describe the repository as a qualifying "live project" unless a deployed/running product, real users, or an active protocol can be evidenced.
+
+## Existing-project provenance
 
 The integrated project is the existing public `verifiable-agent-control-plane` repository. It predates this integration and has a tagged `v0.2.0` release at commit `ed3bb2684743376fdf2769ee378ca614c913e3d4`. It is an installable Python reference implementation for fail-closed agent execution, deterministic revalidation, replay prevention, effect readback, and verifiable receipts.
 
-Claim boundary: this is an existing released public project. This submission does **not** claim a particular user count, production deployment, KeeperHub endorsement, or prize acceptance.
+Claim boundary: this proves the project existed before the KeeperHub work. It does **not** by itself prove main-track live-project eligibility, production usage, user count, KeeperHub endorsement, submission acceptance, or prize eligibility.
 
 ## Problem
 
@@ -29,9 +43,10 @@ KeeperHub becomes the deterministic execution boundary instead of asking the mod
 
 ## Integration
 
-The repository now contains a bounded KeeperHub adapter with these properties:
+The repository contains a bounded KeeperHub adapter with these properties:
 
 - public `GET /api/chains` connectivity discovery;
+- credential validation can use authenticated `GET /api/keys`;
 - authenticated workflow discovery via `GET /api/workflows`;
 - explicit workflow execution via `POST /api/workflows/{workflowId}/execute`;
 - one workflow-start budget per client instance;
@@ -41,44 +56,54 @@ The repository now contains a bounded KeeperHub adapter with these properties:
 - no direct on-chain broadcast method;
 - direct-transfer helper produces the documented REST schema with `simulate: true` and `recipientAddress`.
 
-The integration was audited against KeeperHub's current REST documentation after its first merge. That audit found and corrected a field-name mismatch (`toAddress` → `recipientAddress`) and strengthened replay protection for ambiguous network failures.
+The integration was audited against KeeperHub's REST documentation after its first merge. That audit found and corrected a field-name mismatch (`toAddress` → `recipientAddress`) and strengthened replay protection for ambiguous network failures.
 
 ## Verification already complete
 
 - KeeperHub integration PR #42 merged.
 - Contract-audit fix PR #43 merged.
-- Current audited repository head at packet creation: `ada5d9d125409488ff581a4c2308b9a4c4f291f3`.
+- Audited repository head before this packet branch: `ada5d9d125409488ff581a4c2308b9a4c4f291f3`.
 - Full repository tests passed on Python 3.11, 3.12, and 3.13 before and after both promotions.
 - Twin Bridge Verification passed before and after both promotions.
-- Post-write readback confirmed only the expected files changed.
+- Post-write readback confirmed only expected files changed.
+- Initial submission-packet branch CI passed.
 
-## KeeperHub surfaces used
+## KeeperHub surfaces for the final demo
 
-For the final demo, use only the surfaces that are actually observed:
+Use only surfaces actually observed during the final run:
 
 1. `GET /api/chains` — public service/network discovery.
-2. `GET /api/workflows` — authenticated workflow discovery.
-3. `POST /api/workflows/{workflowId}/execute` — exactly one explicitly authorized workflow start.
-4. `GET /api/workflows/executions/{executionId}/wait` — terminal result readback.
-5. `POST /api/execute/transfer` with `simulate: true` — optional direct-transfer preflight only.
+2. `GET /api/keys` — authenticated organization-key validation.
+3. `GET /api/workflows` — authenticated workflow discovery.
+4. `POST /api/workflows/{workflowId}/execute` — exactly one explicitly authorized workflow start.
+5. `GET /api/workflows/executions/{executionId}/wait` — terminal result readback.
+6. `POST /api/execute/transfer` with `simulate: true` — optional direct-transfer preflight only.
 
 Do not claim a surface was used merely because the adapter supports it.
 
+## Credential boundary
+
+KeeperHub organization keys start with `kh_`. Key creation is intentionally human-gated: normal signup uses browser authentication and organization-key creation requires an owner/admin session; headless onboarding still requires a wallet-controlled SIWE/signature confirmation. Never store, commit, paste into an issue, or include the full key in a receipt.
+
+A valid key should be confirmed through authenticated `GET /api/keys`; public `GET /api/chains` proves reachability only, not authentication.
+
 ## Network
 
-Preferred demo network: **Base Sepolia (`84532`)**, only if the live `GET /api/chains` response reports it as both enabled and testnet at execution time.
+Preferred demo network: an enabled testnet selected from the live `GET /api/chains` response at execution time. Base Sepolia (`84532`) is only a candidate, not a hard-coded eligibility fact.
 
-Do not hard-code eligibility from this document. The demo must select from the live KeeperHub chain catalog.
+Do not claim mainnet use unless the final proof actually used mainnet.
 
-## Required proof before DoraHacks submission
+## Required proof before a main-track submission
 
 | Evidence | State | Value |
 | --- | --- | --- |
 | Public source repository | PASS | `https://github.com/fscfede-beep/verifiable-agent-control-plane` |
-| Audited KeeperHub integration in `main` | PASS | `ada5d9d125409488ff581a4c2308b9a4c4f291f3` at packet creation |
+| Pre-existing project provenance | PASS | `v0.2.0` → `ed3bb2684743376fdf2769ee378ca614c913e3d4` |
+| Audited KeeperHub integration in `main` | PASS | `ada5d9d125409488ff581a4c2308b9a4c4f291f3` before packet docs |
 | Python 3.11/3.12/3.13 CI | PASS | GitHub Actions |
 | Twin Bridge Verification | PASS | GitHub Actions |
-| KeeperHub organization credential validated | **REQUIRED PROOF** | `[INSERT — never paste the key]` |
+| Qualifying live-project evidence | **REQUIRED PROOF** | `[DEPLOYMENT / USERS / ACTIVE PROTOCOL EVIDENCE]` |
+| KeeperHub organization credential validated | **REQUIRED PROOF** | `[KEY PREFIX ONLY — never paste full key]` |
 | Owned/authorized workflow selected | **REQUIRED PROOF** | `[WORKFLOW ID / NAME]` |
 | KeeperHub execution ID | **REQUIRED PROOF** | `[EXECUTION ID]` |
 | Terminal workflow readback | **REQUIRED PROOF** | `[STATUS + RECEIPT HASH]` |
@@ -86,17 +111,19 @@ Do not hard-code eligibility from this document. The demo must select from the l
 | Demo video | **REQUIRED PROOF** | `[VIDEO URL]` |
 | DoraHacks BUIDL/submission URL | **REQUIRED PROOF** | `[SUBMISSION URL]` |
 
-**Hard gate:** do not submit the main-track entry while the transaction link or demo video is missing. The hackathon brief requires source code, a short demo video, and proof of a transaction executed through KeeperHub.
+**Hard gate:** do not submit to the main track while live-project evidence, transaction proof, or demo video is missing.
 
-## Suggested DoraHacks answers
+## Main-track submission copy — use only after gates pass
 
 ### What did you build?
 
-RUMBO Verifiable Agent Control Plane × KeeperHub connects an existing fail-closed agent reliability project to KeeperHub as its deterministic execution layer. An agent may propose an action, but execution only proceeds after explicit local authorization. The exact KeeperHub workflow is then invoked once, its terminal state is read back, and the observed request and response are bound into SHA-256 evidence receipts. Network ambiguity stops the client instead of silently retrying a potentially consequential action.
+RUMBO Verifiable Agent Control Plane × KeeperHub connects an existing fail-closed agent reliability project to KeeperHub as its deterministic execution layer. An agent may propose an action, but execution only proceeds after explicit authorization. The exact KeeperHub workflow is then invoked once, its terminal state is read back, and the observed request and response are bound into SHA-256 evidence receipts. Network ambiguity stops the client instead of silently retrying a potentially consequential action.
 
 ### What existing project is integrated?
 
-`verifiable-agent-control-plane`, an existing public and installable Python reference project for fail-closed agent execution. Its `v0.2.0` release predates this KeeperHub integration. The KeeperHub work extends that project rather than creating a standalone wrapper solely for the hackathon.
+`[REPLACE WITH VERIFIED LIVE-PROJECT DESCRIPTION]`.
+
+The codebase is `verifiable-agent-control-plane`, an existing public and installable Python project whose `v0.2.0` release predates this KeeperHub integration. Do not state that this alone satisfies the event's live-project requirement.
 
 ### Why KeeperHub?
 
@@ -110,73 +137,65 @@ Every supported KeeperHub operation can generate a receipt containing the endpoi
 
 `[REPLACE WITH OBSERVED DEMO NETWORK]`.
 
-For the planned demo, prefer an enabled KeeperHub testnet such as Base Sepolia, selected from the live chain catalog at run time. Do not claim mainnet use unless the final proof actually used mainnet.
-
 ### Unfinished parts / limitations
 
-The repository integration and CI are complete. The external demo evidence is intentionally gated until a KeeperHub organization key is created and validated through the user's authorized account. The submission must not claim a live execution, transaction, or payout before those artifacts exist.
+`[REPLACE AT SUBMISSION TIME]`.
+
+Current truthful state: repository integration and CI are complete; live-project eligibility, KeeperHub account authorization, live execution, transaction proof, and demo video remain externally gated.
 
 ## Demo script — target under 3 minutes
 
-**0:00–0:25 — Problem**
+**0:00–0:25 — Problem**  
 Show the control-plane state model and explain why an accepted agent action is not automatically safe to execute.
 
-**0:25–0:45 — Existing project**
-Show the repository and the pre-existing `v0.2.0` tag to establish that KeeperHub is integrated into an existing project.
+**0:25–0:45 — Existing project**  
+Show the repository and pre-existing `v0.2.0` tag. Separately show the evidence that makes the integrated project "live" under the event definition. If that evidence does not exist, stop and do not represent the main-track gate as passed.
 
-**0:45–1:05 — Public KeeperHub discovery**
-Run:
+**0:45–1:05 — Public KeeperHub discovery**  
+Run `python examples/keeperhub_verified_execution.py` and show the live chain-catalog receipt.
 
-```bash
-python examples/keeperhub_verified_execution.py
-```
+**1:05–1:30 — Authentication and fail-closed boundaries**  
+Validate the `kh_` credential without exposing it, show the key prefix only, and demonstrate that private operations fail without authorization.
 
-Show the live chain catalog receipt and the enabled testnet selected for the demo.
+**1:30–2:05 — Real authorized execution**  
+Run the owned workflow once with explicit authorization and `--wait`. Show `executionId`, final status, request hash, and response hash.
 
-**1:05–1:30 — Fail-closed boundaries**
-Show that private workflow discovery fails without `KEEPERHUB_API_KEY`, and explain that secrets never enter the receipt.
-
-**1:30–2:05 — Real authorized execution**
-With the key provided only through the environment, run:
-
-```bash
-python examples/keeperhub_verified_execution.py \
-  --list-workflows \
-  --execute-workflow YOUR_WORKFLOW_ID \
-  --allow-execution \
-  --wait
-```
-
-Show the returned `executionId`, final status, request hash, and response hash.
-
-**2:05–2:35 — Transaction proof**
+**2:05–2:35 — Transaction proof**  
 Open the actual transaction link produced through KeeperHub. If no transaction exists, stop: the main-track submission is not ready.
 
-**2:35–2:55 — Reliability proof**
-Show the Python 3.11/3.12/3.13 CI and Twin Bridge checks, plus the regression test that prevents automatic replay after an ambiguous workflow-start transport failure.
+**2:35–2:55 — Reliability proof**  
+Show Python 3.11/3.12/3.13 CI, Twin Bridge, and the regression test preventing replay after an ambiguous workflow-start transport failure.
 
-**2:55–3:00 — Close**
+**2:55–3:00 — Close**  
 "Probabilistic agents decide. KeeperHub executes deterministically. RUMBO proves that the authorized action and observed effect still match."
+
+## Bounty-track fallback / parallel lane
+
+The event also offers a separate KeeperHub feature bounty. It requires a feature contributed as a pull request to KeeperHub itself and is judged on mergeability, platform value, code quality/tests, scope, and completeness. Examples named by the organizers include chain integrations, nodes, triggers/actions, connectors, and developer-experience improvements.
+
+This current RUMBO adapter does **not** qualify for that bounty merely because it integrates KeeperHub in this repository. A separate upstream KeeperHub PR/BUIDL is required. The bounty can stack economically with the main track, but DoraHacks requires separate BUIDLs for the two tracks.
 
 ## Final pre-submit checklist
 
 - [x] Existing public project identified.
+- [x] Pre-hackathon release evidence identified.
 - [x] KeeperHub adapter merged to public repository.
 - [x] REST contract audited against current KeeperHub docs.
 - [x] Multi-version CI green.
 - [x] Twin Bridge green.
+- [ ] Live-project requirement proven with deployment/users/active-protocol evidence.
 - [ ] KeeperHub organization key created and validated.
 - [ ] Owned/authorized workflow created or selected.
-- [ ] Live `GET /api/chains` evidence captured.
+- [ ] Live chain-catalog evidence captured.
 - [ ] One bounded KeeperHub workflow execution completed.
 - [ ] Terminal readback captured.
 - [ ] Transaction link captured.
 - [ ] Demo video recorded and uploaded.
-- [ ] DoraHacks entry completed.
+- [ ] DoraHacks main-track entry completed.
 - [ ] Final URLs re-read after submission.
 
 ## Submission truth invariant
 
-`CODE_PASS != LIVE_EXECUTION_PASS != SUBMISSION_PASS != PRIZE_PASS != CASH_RECEIVED`
+`EXISTING_PROJECT_PASS != LIVE_PROJECT_PASS != CODE_PASS != LIVE_EXECUTION_PASS != SUBMISSION_PASS != PRIZE_PASS != CASH_RECEIVED`
 
 Each state advances only when its own external evidence exists.
