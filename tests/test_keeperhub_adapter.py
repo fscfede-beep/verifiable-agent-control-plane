@@ -1,5 +1,6 @@
 import json
 import unittest
+import urllib.error
 
 from verifiable_agent_control_plane.keeperhub import KeeperHubClient, KeeperHubError
 
@@ -22,6 +23,15 @@ class QueueOpener:
         self.requests.append((request, timeout))
         payload, headers = self.responses.pop(0)
         return FakeResponse(payload, headers)
+
+
+class TransportFailureOpener:
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, request, timeout):
+        self.calls += 1
+        raise urllib.error.URLError("connection dropped")
 
 
 class KeeperHubClientTests(unittest.TestCase):
@@ -77,6 +87,32 @@ class KeeperHubClientTests(unittest.TestCase):
             client.execute_workflow("wf_2", allow_execution=True)
         self.assertEqual(ctx.exception.code, "execution_budget_exhausted")
 
+    def test_transport_failure_consumes_execution_budget(self):
+        opener = TransportFailureOpener()
+        client = KeeperHubClient(api_key="kh_test", opener=opener)
+
+        with self.assertRaises(KeeperHubError) as transport:
+            client.execute_workflow("wf_1", allow_execution=True)
+        self.assertEqual(transport.exception.code, "transport_error")
+        self.assertEqual(opener.calls, 1)
+
+        with self.assertRaises(KeeperHubError) as replay:
+            client.execute_workflow("wf_1", allow_execution=True)
+        self.assertEqual(replay.exception.code, "execution_budget_exhausted")
+        self.assertEqual(opener.calls, 1)
+
+    def test_missing_key_does_not_consume_execution_budget(self):
+        opener = QueueOpener([({"executionId": "exec_1", "status": "running"}, {})])
+        client = KeeperHubClient(opener=opener)
+
+        with self.assertRaises(KeeperHubError) as missing:
+            client.execute_workflow("wf_1", allow_execution=True)
+        self.assertEqual(missing.exception.code, "missing_api_key")
+
+        client._api_key = "kh_test"
+        response, _ = client.execute_workflow("wf_1", allow_execution=True)
+        self.assertEqual(response["executionId"], "exec_1")
+
     def test_wait_requires_success_before_claiming_completion(self):
         client = KeeperHubClient(api_key="kh_test", opener=QueueOpener([]))
         with self.assertRaises(KeeperHubError) as incomplete:
@@ -90,12 +126,17 @@ class KeeperHubClientTests(unittest.TestCase):
         successful = {"completed": True, "status": "success", "transactionHashes": []}
         self.assertIs(client.require_success(successful), successful)
 
-    def test_transfer_helper_is_simulation_only(self):
+    def test_transfer_helper_matches_rest_schema_and_is_simulation_only(self):
         payload = KeeperHubClient.build_transfer_simulation(
             chain_id=84532,
             to_address="0x1111111111111111111111111111111111111111",
             amount="0.01",
         )
+        self.assertEqual(
+            payload["recipientAddress"],
+            "0x1111111111111111111111111111111111111111",
+        )
+        self.assertNotIn("toAddress", payload)
         self.assertIs(payload["simulate"], True)
         self.assertFalse(KeeperHubClient.direct_broadcast_supported())
 
