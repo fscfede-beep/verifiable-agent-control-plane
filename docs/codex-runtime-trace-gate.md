@@ -5,7 +5,9 @@ It is intentionally narrower than a general Codex event log.
 
 Source contract pin:
 
-`openai/codex@ea3c4848d8481aa741475a7e29304115c1adb8aa`
+`openai/codex@60e35765c3e43e152bf5b382a38a0628efd70842`
+
+Revalidated on 2026-09-14 against the then-current `main`. `ToolFinishInput` still exposes `Completed`, `Blocked`, `Failed { handler_executed }`, and `Aborted`; unified-exec still emits `ExecCommandEnd` only after its cancellation/exit signal path and output drain, while failure/unknown termination can surface `exit_code == -1`. Therefore `exit_code != -1` remains the required condition for this verifier to promote host-managed quiescence.
 
 ## Accepted JSONL event shapes
 
