@@ -76,7 +76,7 @@ The integration was audited against KeeperHub's REST contract after its first me
 - Python 3.11/3.12/3.13 repository CI passed before and after promotions.
 - Twin Bridge Verification passed before and after promotions.
 - Live-product deployment evidence captured separately.
-- Submission-packet branch CI passed before live-product evidence was added; final branch CI must be re-read before merge.
+- Submission evidence PR #47 passed protected Python 3.11/3.12/3.13 checks, merged by rebase, and its post-merge `test` plus `Twin Bridge Verification` workflows passed on `main`.
 
 ## KeeperHub surfaces for final demo
 
