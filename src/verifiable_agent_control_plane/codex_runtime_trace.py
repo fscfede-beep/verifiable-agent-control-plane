@@ -46,6 +46,8 @@ def verify_runtime_trace(
     for index, raw in enumerate(events):
         event_count += 1
         try:
+            if not isinstance(raw, Mapping):
+                raise TypeError("event must be a JSON object")
             event_type = _required_str(raw, "type")
             if event_type == "ToolFinish":
                 finish = _parse_finish(raw)
