@@ -41,11 +41,27 @@ Unified-exec terminal event:
 {"type":"ExecCommandEnd","turn_id":"turn-1","call_id":"call-1","process_id":"4242","exit_code":0}
 ```
 
+## Verification command
+
+```bash
+python -m verifiable_agent_control_plane.codex_trace_cli trace.jsonl --session-id SESSION_ID
+```
+
+The command prints one machine-readable JSON object. Exit status is deliberately fail-closed:
+
+- `0`: `PASS`
+- `2`: `UNKNOWN`
+- `3`: `MISMATCH`
+
+The output includes the pinned Codex source SHA, event/finish/receipt counts, unresolved `(turn_id, call_id)` keys, errors, and the SHA-256 of each terminal receipt.
+
 ## Verdicts
 
 - `PASS`: every observed `ToolFinish` has a verified terminal receipt and host-managed quiescence is proven.
 - `UNKNOWN`: evidence is incomplete, including a missing required `ExecCommandEnd`, unmatched terminal event, or `exit_code == -1`.
 - `MISMATCH`: input is malformed or material facts conflict for the same `(turn_id, call_id)`.
+
+Non-object JSONL entries are malformed evidence and therefore `MISMATCH`, not an uncaught parser condition.
 
 ## Claim boundary
 
