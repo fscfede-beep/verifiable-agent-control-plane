@@ -116,13 +116,13 @@ jobs:
           python-version: "3.13"
 
       - name: Download A attestation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twin-attestation-A
           path: attestations/A
 
       - name: Download B attestation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twin-attestation-B
           path: attestations/B
