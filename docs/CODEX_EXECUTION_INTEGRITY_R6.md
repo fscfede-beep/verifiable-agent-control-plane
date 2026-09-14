@@ -2,7 +2,7 @@
 
 Status: `LOCAL_PASS`, runtime trace `NOT_EXECUTED`.
 
-This integration brings the RUMBO Execution Integrity contract into the repository as native Python modules and regression tests. It is source-pinned to `openai/codex@ea3c4848d8481aa741475a7e29304115c1adb8aa` (observed 2026-09-14).
+This integration brings the RUMBO Execution Integrity contract into the repository as native Python modules and regression tests. It is source-pinned to `openai/codex@60e35765c3e43e152bf5b382a38a0628efd70842` (revalidated 2026-09-14 against the then-current `main`).
 
 ## Contract
 
@@ -25,7 +25,7 @@ The exactly-once receipt identity is `(session_id, turn_id, tool_use_id)`. Ident
 
 ## Unified-exec quiescence
 
-The correlator keys `ToolFinish` and `ExecCommandEnd` by `(turn_id, call_id)`. Source inspection of the pinned Codex commit shows the unified-exec watcher waits for process termination signalling and output drain before emitting `ExecCommandEnd`. However, the termination path can cancel the same token before an exit code is confirmed; Codex uses `-1` when no exit code is available.
+The correlator keys `ToolFinish` and `ExecCommandEnd` by `(turn_id, call_id)`. Source inspection of the pinned Codex commit shows the unified-exec watcher waits for the cancellation/exit signalling path and output drain before emitting `ExecCommandEnd`. The termination/failure paths can still produce no confirmed exit code; Codex represents that terminal uncertainty with `exit_code == -1` in the relevant failure path.
 
 Therefore this implementation promotes a pending receipt to `HOST_MANAGED/QUIESCENT` only when a correlated `ExecCommandEnd` has `exit_code != -1`. If `exit_code == -1`, quiescence remains `UNKNOWN`.
 
@@ -35,8 +35,12 @@ This claim is intentionally limited to the host-managed unified-exec process at 
 
 - adapted package tests before publication: `39/39 PASS`
 - reduced repository integration suite before publication: `10/10 PASS`
+- runtime trace verifier suite: `10/10 PASS`
+- CLI runner suite: `4/4 PASS`
+- installed console script: covered by repository tests
 - Python compile check: `PASS`
-- repository CI: pending until this branch/PR is evaluated
+- prior repository CI on the preceding head: `PASS` on Python 3.11/3.12/3.13 + Twin Bridge A/B
+- current source-pin update: requires fresh CI on the new head
 - real Codex runtime event ordering: `NOT_PROVEN`
 - upstream Codex modification: `NOT_EXECUTED`
 - production: `NO_GO`
