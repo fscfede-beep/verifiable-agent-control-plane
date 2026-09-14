@@ -21,6 +21,8 @@ from .canonical import (
     SCHEMA_VERSION,
     advance,
     resume_state,
+    save_state,
+    load_state,
 )
 from .security import (
     ActionGrant,
@@ -68,4 +70,6 @@ __all__ = [
     "verify_security_transition",
     "verify_transition",
     "resume_state",
+    "save_state",
+    "load_state",
 ]
