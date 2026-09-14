@@ -6,7 +6,7 @@ from typing import Optional
 from .codex_adapter import CodexFinish, CodexOutcomeKind, terminalize_codex_finish
 from .execution_integrity import TerminalReceipt, TerminalRegistry
 
-CODEX_SOURCE_SHA = "ea3c4848d8481aa741475a7e29304115c1adb8aa"
+CODEX_SOURCE_SHA = "60e35765c3e43e152bf5b382a38a0628efd70842"
 
 
 @dataclass(frozen=True)
