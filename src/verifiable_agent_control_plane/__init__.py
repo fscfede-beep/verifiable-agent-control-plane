@@ -15,6 +15,8 @@ from .core import (
     verify_transition,
 )
 from .canonical import (
+    BRAND,
+    BRAND_NAMESPACE,
     CanonicalProblemError,
     CanonicalProblemState,
     Evidence,
@@ -39,6 +41,8 @@ from .security import (
 
 __all__ = [
     "ActionGrant",
+    "BRAND",
+    "BRAND_NAMESPACE",
     "CanonicalProblemError",
     "CanonicalProblemState",
     "ApprovalAnchor",

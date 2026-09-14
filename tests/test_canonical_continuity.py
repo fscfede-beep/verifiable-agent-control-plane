@@ -1,6 +1,8 @@
 import unittest
 
 from verifiable_agent_control_plane import (
+    BRAND,
+    BRAND_NAMESPACE,
     CanonicalProblemError,
     CanonicalProblemState,
     Evidence,
@@ -20,14 +22,40 @@ class CanonicalContinuityTests(unittest.TestCase):
         )
         self.state = CanonicalProblemState(
             problem_id="problem-001",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/0",
             title="Cross-chat continuity",
             objective="Resume the same problem safely in a new chat",
             status="EVIDENCE",
             evidence=(self.evidence,),
         )
 
+    def test_brand_record_revision_is_bound_to_state_revision(self) -> None:
+        bad = CanonicalProblemState(
+            problem_id="problem-001",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/99",
+            title="Cross-chat continuity",
+            objective="Resume safely",
+            status="EVIDENCE",
+        )
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "RUMBO IA record revision mismatch"
+        ):
+            bad.validate()
+
+    def test_missing_brand_fields_fail_closed_on_restore(self) -> None:
+        data = self.state.to_dict()
+        del data["brand"]
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "missing required fields: brand"
+        ):
+            CanonicalProblemState.from_dict(data)
+
     def test_state_digest_is_stable_and_sha256_bound(self) -> None:
         self.assertEqual(self.state.digest, self.state.digest)
+        self.assertEqual(self.state.brand, BRAND)
+        self.assertTrue(self.state.brand_record_id.startswith(BRAND_NAMESPACE + "/"))
         self.assertTrue(self.state.digest.startswith("sha256:"))
         self.assertEqual(len(self.state.digest), 71)
 
