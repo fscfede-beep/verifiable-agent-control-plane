@@ -43,6 +43,14 @@ Unified-exec terminal event:
 
 ## Verification command
 
+After `pip install .`:
+
+```bash
+codex-trace-verify trace.jsonl --session-id SESSION_ID
+```
+
+Direct module invocation remains equivalent:
+
 ```bash
 python -m verifiable_agent_control_plane.codex_trace_cli trace.jsonl --session-id SESSION_ID
 ```
