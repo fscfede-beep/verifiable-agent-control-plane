@@ -160,7 +160,7 @@ class ExecutionIntegrityCodexR6Tests(unittest.TestCase):
             )
 
     def test_source_pin_is_explicit(self):
-        self.assertEqual(CODEX_SOURCE_SHA, "ea3c4848d8481aa741475a7e29304115c1adb8aa")
+        self.assertEqual(CODEX_SOURCE_SHA, "60e35765c3e43e152bf5b382a38a0628efd70842")
 
 
 if __name__ == "__main__":
