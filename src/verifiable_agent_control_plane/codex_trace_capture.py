@@ -50,6 +50,10 @@ def capture_codex_trace(
         check=False,
     ).stdout.strip()
 
+    # codex exec 0.154.x does not expose -a/--ask-for-approval after the
+    # subcommand. Headless exec defaults approval_policy to Never, so the
+    # capture must not emit the obsolete argument. Keep the argv deliberately
+    # limited to flags advertised by `codex exec --help`.
     argv = (
         codex_executable,
         "exec",
@@ -58,8 +62,6 @@ def capture_codex_trace(
         "--skip-git-repo-check",
         "-s",
         "read-only",
-        "-a",
-        "never",
         "-C",
         str(cwd),
         prompt,
