@@ -31,16 +31,16 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     for event in events:
         if not isinstance(event, dict):
             return AppServerEvidence(AppServerVerdict.MISMATCH)
-        method = event.get("method")
-        params = event.get("params")
+        method, params = event.get("method"), event.get("params")
         if method not in {"item/started", "item/completed", "turn/completed"}:
             continue
         if not isinstance(params, dict):
             return AppServerEvidence(AppServerVerdict.MISMATCH)
         if method == "turn/completed":
             thread_id, turn_id = params.get("threadId"), params.get("turnId")
-            if isinstance(thread_id, str) and isinstance(turn_id, str):
-                completed_turns.add((thread_id, turn_id))
+            if not (isinstance(thread_id, str) and thread_id.strip() and isinstance(turn_id, str) and turn_id.strip()):
+                return AppServerEvidence(AppServerVerdict.MISMATCH)
+            completed_turns.add((thread_id, turn_id))
             continue
         item = params.get("item")
         if not isinstance(item, dict) or item.get("type") != "commandExecution":
@@ -50,10 +50,8 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
             "call_id": item.get("id"), "process_id": item.get("processId"),
             "status": item.get("status"), "exit_code": item.get("exitCode"),
         }
-        if method == "item/started":
-            started = record
-        else:
-            completed = record
+        if method == "item/started": started = record
+        else: completed = record
 
     if completed is None:
         return AppServerEvidence(AppServerVerdict.UNKNOWN)
@@ -65,7 +63,10 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
         return AppServerEvidence(AppServerVerdict.UNKNOWN)
     if started is not None and any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id")):
         return AppServerEvidence(AppServerVerdict.MISMATCH)
-    verdict = AppServerVerdict.TURN_TERMINAL if (completed["thread_id"], completed["turn_id"]) in completed_turns else AppServerVerdict.COMMAND_TERMINAL
+    command_identity = (completed["thread_id"], completed["turn_id"])
+    if completed_turns and command_identity not in completed_turns:
+        return AppServerEvidence(AppServerVerdict.MISMATCH)
+    verdict = AppServerVerdict.TURN_TERMINAL if command_identity in completed_turns else AppServerVerdict.COMMAND_TERMINAL
     return AppServerEvidence(
         verdict=verdict, thread_id=completed["thread_id"], turn_id=completed["turn_id"],
         call_id=completed["call_id"], process_id=completed["process_id"], exit_code=exit_code,
