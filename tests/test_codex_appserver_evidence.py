@@ -32,6 +32,13 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         ]
         self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
 
+    def test_turn_completed_for_different_turn_is_mismatch(self):
+        events = [
+            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "exitCode": 0}}},
+            {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu2"}},
+        ]
+        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
+
 
 if __name__ == "__main__":
     unittest.main()
