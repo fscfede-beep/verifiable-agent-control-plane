@@ -9,9 +9,32 @@ Source contract pin:
 
 Revalidated on 2026-09-14 against the then-current `main`. `ToolFinishInput` still exposes `Completed`, `Blocked`, `Failed { handler_executed }`, and `Aborted`; unified-exec still emits `ExecCommandEnd` only after its cancellation/exit signal path and output drain, while failure/unknown termination can surface `exit_code == -1`. Therefore `exit_code != -1` remains the required condition for this verifier to promote host-managed quiescence.
 
-## Accepted JSONL event shapes
+## Raw capture
 
-A captured trace may be normalized to one JSON object per line.
+After `pip install .`, capture an isolated read-only Codex exec run with:
+
+```bash
+codex-trace-capture --output-dir CAPTURE_DIR --codex codex --cwd WORK_DIR
+```
+
+The capture command uses `codex exec --json --ephemeral --skip-git-repo-check -s read-only -a never`, does not use `shell=True`, and preserves:
+
+- `trace.raw.jsonl`
+- `trace.stderr.txt`
+- `capture.metadata.json`
+- Codex version
+- subprocess exit code
+- stdout/stderr line counts
+- SHA-256 of both raw streams
+- SHA-256 of the prompt while redacting prompt text from recorded argv
+
+Important: `codex exec --json` is a raw transport surface, not the normalized verifier contract. Current Codex exec JSONL emits `thread.started`, `turn.started`, `item.started`, `item.updated`, `item.completed`, `turn.completed`, and related events. A `command_execution` item exposes an item id and exit code, but the exec JSONL surface does not directly expose the internal `ToolFinishInput` callback or a real Codex `turn_id` on every terminal item. Raw capture therefore does **not** by itself satisfy #54.
+
+The app-server `ItemCompletedNotification` is a stronger public observation surface for command terminality because it carries `threadId`, `turnId`, and a command item containing `id`, `processId`, `status`, `source`, and `exitCode`. This still must not be mislabeled as `ToolFinishInput`; the two observations have different semantics.
+
+## Accepted normalized JSONL event shapes
+
+A trace is accepted by `codex-trace-verify` only after its evidence has been normalized without inventing missing facts.
 
 Completed tool finish:
 
@@ -44,8 +67,6 @@ Unified-exec terminal event:
 ```
 
 ## Verification command
-
-After `pip install .`:
 
 ```bash
 codex-trace-verify trace.jsonl --session-id SESSION_ID
