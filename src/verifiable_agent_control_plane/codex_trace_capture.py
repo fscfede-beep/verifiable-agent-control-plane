@@ -90,6 +90,15 @@ def capture_codex_trace(
     metadata = asdict(report)
     metadata["argv"] = list(report.argv)
     metadata["prompt_sha256"] = _sha256(prompt.encode("utf-8"))
+    # Fail closed on evidence sufficiency. Upstream openai/codex#41590 documents
+    # that `codex exec --json` can omit unified custom tool calls even when the
+    # corresponding records exist in the persisted rollout. Therefore this raw
+    # stream is useful transport evidence but is not sufficient to establish
+    # ToolFinish -> ExecCommandEnd correlation or unified-exec completeness.
+    metadata["observation_surface"] = "codex_exec_json"
+    metadata["unified_exec_coverage"] = "NOT_PROVEN"
+    metadata["sufficient_for_toolfinish_correlation"] = False
+    metadata["coverage_basis"] = "openai/codex#41590"
     (output_dir / "capture.metadata.json").write_text(
         json.dumps(metadata, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
