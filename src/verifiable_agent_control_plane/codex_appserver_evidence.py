@@ -30,6 +30,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     started: dict[str, Any] | None = None
     completed: dict[str, Any] | None = None
     completed_turns: set[tuple[str, str]] = set()
+    allowed_sources = {"agent", "userShell", "unifiedExecStartup", "unifiedExecInteraction"}
     for event in events:
         if not isinstance(event, dict): return AppServerEvidence(AppServerVerdict.MISMATCH)
         method, params = event.get("method"), event.get("params")
@@ -52,13 +53,14 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     if completed is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     required = (completed["thread_id"], completed["turn_id"], completed["call_id"], completed["process_id"])
     if not all(isinstance(value, str) and value.strip() for value in required): return AppServerEvidence(AppServerVerdict.UNKNOWN)
+    source = completed["source"] if isinstance(completed["source"], str) else None
+    if source not in allowed_sources: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     exit_code = completed["exit_code"]
     if isinstance(exit_code, bool) or not isinstance(exit_code, int) or completed["status"] not in {"completed", "failed"}: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     if started is not None and any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id", "source")): return AppServerEvidence(AppServerVerdict.MISMATCH)
     command_identity = (completed["thread_id"], completed["turn_id"])
     if completed_turns and command_identity not in completed_turns: return AppServerEvidence(AppServerVerdict.MISMATCH)
     verdict = AppServerVerdict.TURN_TERMINAL if command_identity in completed_turns else AppServerVerdict.COMMAND_TERMINAL
-    source = completed["source"] if isinstance(completed["source"], str) else None
     return AppServerEvidence(
         verdict=verdict, thread_id=completed["thread_id"], turn_id=completed["turn_id"], call_id=completed["call_id"],
         process_id=completed["process_id"], exit_code=exit_code, source=source,
