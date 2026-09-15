@@ -26,6 +26,10 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertEqual(result.source, "agent")
         self.assertFalse(result.unified_exec_observed)
 
+    def test_unknown_source_is_unknown(self):
+        events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "mystery", "exitCode": 0}}}]
+        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.UNKNOWN)
+
     def test_missing_process_id_is_unknown(self):
         events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "exitCode": 0}}}]
         self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.UNKNOWN)
