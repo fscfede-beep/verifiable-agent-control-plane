@@ -44,8 +44,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
         if not isinstance(item, dict) or item.get("type") != "commandExecution": continue
         record = {
             "thread_id": params.get("threadId"), "turn_id": params.get("turnId"), "call_id": item.get("id"),
-            "process_id": item.get("processId"), "status": item.get("status"), "exit_code": item.get("exitCode"),
-            "source": item.get("source", "agent"),
+            "process_id": item.get("processId"), "status": item.get("status"), "exit_code": item.get("exitCode"), "source": item.get("source", "agent"),
         }
         if method == "item/started": started = record
         else: completed = record
@@ -55,8 +54,9 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     if not all(isinstance(value, str) and value.strip() for value in required): return AppServerEvidence(AppServerVerdict.UNKNOWN)
     source = completed["source"] if isinstance(completed["source"], str) else None
     if source not in allowed_sources: return AppServerEvidence(AppServerVerdict.UNKNOWN)
-    exit_code = completed["exit_code"]
-    if isinstance(exit_code, bool) or not isinstance(exit_code, int) or completed["status"] not in {"completed", "failed"}: return AppServerEvidence(AppServerVerdict.UNKNOWN)
+    exit_code, status = completed["exit_code"], completed["status"]
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int) or status not in {"completed", "failed"}: return AppServerEvidence(AppServerVerdict.UNKNOWN)
+    if (status == "completed" and exit_code != 0) or (status == "failed" and exit_code == 0): return AppServerEvidence(AppServerVerdict.MISMATCH)
     if started is not None and any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id", "source")): return AppServerEvidence(AppServerVerdict.MISMATCH)
     command_identity = (completed["thread_id"], completed["turn_id"])
     if completed_turns and command_identity not in completed_turns: return AppServerEvidence(AppServerVerdict.MISMATCH)
