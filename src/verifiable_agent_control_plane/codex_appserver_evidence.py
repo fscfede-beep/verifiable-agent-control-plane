@@ -47,6 +47,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
             "process_id": item.get("processId"), "status": item.get("status"), "exit_code": item.get("exitCode"), "source": item.get("source", "agent"),
         }
         if method == "item/started":
+            if record["status"] != "inProgress": return AppServerEvidence(AppServerVerdict.MISMATCH)
             if started is None: started = record
             elif record != started: return AppServerEvidence(AppServerVerdict.MISMATCH)
         elif completed is None: completed = record
