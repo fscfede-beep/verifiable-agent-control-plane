@@ -7,13 +7,13 @@ def completed(call="call1", process="p1", source="agent", status="completed", ex
     return {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": status, "processId": process, "source": source, "exitCode": exit_code}}}
 
 
+def started(call="call1", process="p1", source="agent"):
+    return {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": "inProgress", "processId": process, "source": source}}}
+
+
 class CodexAppServerEvidenceTests(unittest.TestCase):
     def test_completed_unified_exec_command_and_turn_is_turn_terminal_not_quiescent(self):
-        events = [
-            {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1", "source": "unifiedExecStartup"}}},
-            completed(source="unifiedExecStartup"),
-            {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu1"}},
-        ]
+        events = [started(source="unifiedExecStartup"), completed(source="unifiedExecStartup"), {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu1"}}]
         result = evaluate_appserver_notifications(events)
         self.assertEqual(result.verdict, AppServerVerdict.TURN_TERMINAL)
         self.assertEqual(result.source, "unifiedExecStartup")
@@ -22,6 +22,9 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
+
+    def test_distinct_second_start_is_mismatch(self):
+        self.assertEqual(evaluate_appserver_notifications([started(), started(call="call2", process="p2"), completed()]).verdict, AppServerVerdict.MISMATCH)
 
     def test_identical_completed_replay_is_idempotent(self):
         event = completed()
@@ -44,9 +47,8 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertEqual(evaluate_appserver_notifications(missing).verdict, AppServerVerdict.UNKNOWN)
 
     def test_conflicting_identity_or_source_is_mismatch(self):
-        started = {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1", "source": "unifiedExecStartup"}}}
-        self.assertEqual(evaluate_appserver_notifications([started, completed(process="p2", source="unifiedExecStartup")]).verdict, AppServerVerdict.MISMATCH)
-        self.assertEqual(evaluate_appserver_notifications([started, completed(source="agent")]).verdict, AppServerVerdict.MISMATCH)
+        self.assertEqual(evaluate_appserver_notifications([started(source="unifiedExecStartup"), completed(process="p2", source="unifiedExecStartup")]).verdict, AppServerVerdict.MISMATCH)
+        self.assertEqual(evaluate_appserver_notifications([started(source="unifiedExecStartup"), completed(source="agent")]).verdict, AppServerVerdict.MISMATCH)
 
     def test_turn_completed_for_different_turn_is_mismatch(self):
         events = [completed(), {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu2"}}]
