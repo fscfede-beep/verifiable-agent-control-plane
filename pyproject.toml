@@ -12,6 +12,7 @@ dependencies = []
 
 [project.scripts]
 codex-trace-verify = "verifiable_agent_control_plane.codex_trace_cli:main"
+codex-trace-capture = "verifiable_agent_control_plane.codex_trace_capture:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
