@@ -52,7 +52,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
         elif completed is None: completed = record
         elif record != completed: return AppServerEvidence(AppServerVerdict.MISMATCH)
 
-    if completed is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
+    if completed is None or started is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     required = (completed["thread_id"], completed["turn_id"], completed["call_id"], completed["process_id"])
     if not all(isinstance(value, str) and value.strip() for value in required): return AppServerEvidence(AppServerVerdict.UNKNOWN)
     source = completed["source"] if isinstance(completed["source"], str) else None
@@ -60,7 +60,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     exit_code, status = completed["exit_code"], completed["status"]
     if isinstance(exit_code, bool) or not isinstance(exit_code, int) or status not in {"completed", "failed"}: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     if (status == "completed" and exit_code != 0) or (status == "failed" and exit_code == 0): return AppServerEvidence(AppServerVerdict.MISMATCH)
-    if started is not None and any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id", "source")): return AppServerEvidence(AppServerVerdict.MISMATCH)
+    if any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id", "source")): return AppServerEvidence(AppServerVerdict.MISMATCH)
     command_identity = (completed["thread_id"], completed["turn_id"])
     if completed_turns and command_identity not in completed_turns: return AppServerEvidence(AppServerVerdict.MISMATCH)
     verdict = AppServerVerdict.TURN_TERMINAL if command_identity in completed_turns else AppServerVerdict.COMMAND_TERMINAL
