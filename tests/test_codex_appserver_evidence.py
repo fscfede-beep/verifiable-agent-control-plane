@@ -23,8 +23,10 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
 
-    def test_distinct_second_start_is_mismatch(self):
-        self.assertEqual(evaluate_appserver_notifications([started(), started(call="call2", process="p2"), completed()]).verdict, AppServerVerdict.MISMATCH)
+    def test_identical_start_replay_is_idempotent_but_distinct_start_is_mismatch(self):
+        s = started()
+        self.assertEqual(evaluate_appserver_notifications([s, s, completed()]).verdict, AppServerVerdict.COMMAND_TERMINAL)
+        self.assertEqual(evaluate_appserver_notifications([s, started(call="call2", process="p2"), completed()]).verdict, AppServerVerdict.MISMATCH)
 
     def test_identical_completed_replay_is_idempotent(self):
         event = completed()
