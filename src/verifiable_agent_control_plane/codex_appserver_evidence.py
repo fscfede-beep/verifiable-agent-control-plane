@@ -8,6 +8,7 @@ from typing import Any, Iterable
 class AppServerVerdict(str, Enum):
     UNKNOWN = "UNKNOWN"
     COMMAND_TERMINAL = "COMMAND_TERMINAL"
+    TURN_TERMINAL = "TURN_TERMINAL"
     MISMATCH = "MISMATCH"
 
 
@@ -26,6 +27,7 @@ class AppServerEvidence:
 def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppServerEvidence:
     started: dict[str, Any] | None = None
     completed: dict[str, Any] | None = None
+    completed_turns: set[tuple[str, str]] = set()
     for event in events:
         if not isinstance(event, dict):
             return AppServerEvidence(AppServerVerdict.MISMATCH)
@@ -35,22 +37,23 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
             continue
         if not isinstance(params, dict):
             return AppServerEvidence(AppServerVerdict.MISMATCH)
-        if method.startswith("item/"):
-            item = params.get("item")
-            if not isinstance(item, dict) or item.get("type") != "commandExecution":
-                continue
-            record = {
-                "thread_id": params.get("threadId"),
-                "turn_id": params.get("turnId"),
-                "call_id": item.get("id"),
-                "process_id": item.get("processId"),
-                "status": item.get("status"),
-                "exit_code": item.get("exitCode"),
-            }
-            if method == "item/started":
-                started = record
-            else:
-                completed = record
+        if method == "turn/completed":
+            thread_id, turn_id = params.get("threadId"), params.get("turnId")
+            if isinstance(thread_id, str) and isinstance(turn_id, str):
+                completed_turns.add((thread_id, turn_id))
+            continue
+        item = params.get("item")
+        if not isinstance(item, dict) or item.get("type") != "commandExecution":
+            continue
+        record = {
+            "thread_id": params.get("threadId"), "turn_id": params.get("turnId"),
+            "call_id": item.get("id"), "process_id": item.get("processId"),
+            "status": item.get("status"), "exit_code": item.get("exitCode"),
+        }
+        if method == "item/started":
+            started = record
+        else:
+            completed = record
 
     if completed is None:
         return AppServerEvidence(AppServerVerdict.UNKNOWN)
@@ -58,22 +61,13 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
     if not all(isinstance(value, str) and value.strip() for value in required):
         return AppServerEvidence(AppServerVerdict.UNKNOWN)
     exit_code = completed["exit_code"]
-    if isinstance(exit_code, bool) or not isinstance(exit_code, int):
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int) or completed["status"] not in {"completed", "failed"}:
         return AppServerEvidence(AppServerVerdict.UNKNOWN)
-    if completed["status"] not in {"completed", "failed"}:
-        return AppServerEvidence(AppServerVerdict.UNKNOWN)
-    if started is not None:
-        identity = ("thread_id", "turn_id", "call_id", "process_id")
-        if any(started[key] != completed[key] for key in identity):
-            return AppServerEvidence(AppServerVerdict.MISMATCH)
-
+    if started is not None and any(started[key] != completed[key] for key in ("thread_id", "turn_id", "call_id", "process_id")):
+        return AppServerEvidence(AppServerVerdict.MISMATCH)
+    verdict = AppServerVerdict.TURN_TERMINAL if (completed["thread_id"], completed["turn_id"]) in completed_turns else AppServerVerdict.COMMAND_TERMINAL
     return AppServerEvidence(
-        verdict=AppServerVerdict.COMMAND_TERMINAL,
-        thread_id=completed["thread_id"],
-        turn_id=completed["turn_id"],
-        call_id=completed["call_id"],
-        process_id=completed["process_id"],
-        exit_code=exit_code,
-        toolfinish_observed=False,
-        quiescence_proven=False,
+        verdict=verdict, thread_id=completed["thread_id"], turn_id=completed["turn_id"],
+        call_id=completed["call_id"], process_id=completed["process_id"], exit_code=exit_code,
+        toolfinish_observed=False, quiescence_proven=False,
     )
