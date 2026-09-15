@@ -3,11 +3,15 @@ import unittest
 from verifiable_agent_control_plane.codex_appserver_evidence import AppServerVerdict, evaluate_appserver_notifications
 
 
+def completed(call="call1", process="p1", source="agent", status="completed", exit_code=0):
+    return {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": status, "processId": process, "source": source, "exitCode": exit_code}}}
+
+
 class CodexAppServerEvidenceTests(unittest.TestCase):
     def test_completed_unified_exec_command_and_turn_is_turn_terminal_not_quiescent(self):
         events = [
             {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1", "source": "unifiedExecStartup"}}},
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "unifiedExecStartup", "exitCode": 0}}},
+            completed(source="unifiedExecStartup"),
             {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu1"}},
         ]
         result = evaluate_appserver_notifications(events)
@@ -19,48 +23,33 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
 
-    def test_two_completed_commands_are_not_silently_collapsed(self):
-        events = [
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "agent", "exitCode": 0}}},
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call2", "type": "commandExecution", "status": "completed", "processId": "p2", "source": "agent", "exitCode": 0}}},
-        ]
-        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
+    def test_identical_completed_replay_is_idempotent(self):
+        event = completed()
+        self.assertEqual(evaluate_appserver_notifications([event, event]).verdict, AppServerVerdict.COMMAND_TERMINAL)
 
-    def test_failed_status_with_zero_exit_is_mismatch(self):
-        events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "failed", "processId": "p1", "source": "agent", "exitCode": 0}}}]
-        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
+    def test_divergent_or_distinct_second_completion_is_mismatch(self):
+        self.assertEqual(evaluate_appserver_notifications([completed(), completed(call="call2", process="p2")]).verdict, AppServerVerdict.MISMATCH)
+        self.assertEqual(evaluate_appserver_notifications([completed(), completed(exit_code=1, status="failed")]).verdict, AppServerVerdict.MISMATCH)
 
-    def test_completed_status_with_nonzero_exit_is_mismatch(self):
-        events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "agent", "exitCode": 7}}}]
-        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
+    def test_terminal_status_exit_code_mismatch_is_mismatch(self):
+        self.assertEqual(evaluate_appserver_notifications([completed(status="failed", exit_code=0)]).verdict, AppServerVerdict.MISMATCH)
+        self.assertEqual(evaluate_appserver_notifications([completed(status="completed", exit_code=7)]).verdict, AppServerVerdict.MISMATCH)
 
     def test_command_terminal_without_turn_completion_is_distinct(self):
-        events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "agent", "exitCode": 0}}}]
-        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.COMMAND_TERMINAL)
+        self.assertEqual(evaluate_appserver_notifications([completed()]).verdict, AppServerVerdict.COMMAND_TERMINAL)
 
     def test_unknown_source_or_missing_process_is_unknown(self):
-        unknown = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "mystery", "exitCode": 0}}}]
+        self.assertEqual(evaluate_appserver_notifications([completed(source="mystery")]).verdict, AppServerVerdict.UNKNOWN)
         missing = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "exitCode": 0}}}]
-        self.assertEqual(evaluate_appserver_notifications(unknown).verdict, AppServerVerdict.UNKNOWN)
         self.assertEqual(evaluate_appserver_notifications(missing).verdict, AppServerVerdict.UNKNOWN)
 
     def test_conflicting_identity_or_source_is_mismatch(self):
-        identity = [
-            {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1"}}},
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p2", "exitCode": 0}}},
-        ]
-        source = [
-            {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1", "source": "unifiedExecStartup"}}},
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "agent", "exitCode": 0}}},
-        ]
-        self.assertEqual(evaluate_appserver_notifications(identity).verdict, AppServerVerdict.MISMATCH)
-        self.assertEqual(evaluate_appserver_notifications(source).verdict, AppServerVerdict.MISMATCH)
+        started = {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "inProgress", "processId": "p1", "source": "unifiedExecStartup"}}}
+        self.assertEqual(evaluate_appserver_notifications([started, completed(process="p2", source="unifiedExecStartup")]).verdict, AppServerVerdict.MISMATCH)
+        self.assertEqual(evaluate_appserver_notifications([started, completed(source="agent")]).verdict, AppServerVerdict.MISMATCH)
 
     def test_turn_completed_for_different_turn_is_mismatch(self):
-        events = [
-            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "exitCode": 0}}},
-            {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu2"}},
-        ]
+        events = [completed(), {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu2"}}]
         self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
 
 
