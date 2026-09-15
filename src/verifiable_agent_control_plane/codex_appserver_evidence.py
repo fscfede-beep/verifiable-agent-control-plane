@@ -37,6 +37,7 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
         if method not in {"item/started", "item/completed", "turn/completed"}: continue
         if not isinstance(params, dict): return AppServerEvidence(AppServerVerdict.MISMATCH)
         if method == "turn/completed":
+            if completed is None: return AppServerEvidence(AppServerVerdict.MISMATCH)
             thread_id, turn_id = params.get("threadId"), params.get("turnId")
             if not (isinstance(thread_id, str) and thread_id.strip() and isinstance(turn_id, str) and turn_id.strip()): return AppServerEvidence(AppServerVerdict.MISMATCH)
             completed_turns.add((thread_id, turn_id)); continue
@@ -47,11 +48,13 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
             "process_id": item.get("processId"), "status": item.get("status"), "exit_code": item.get("exitCode"), "source": item.get("source", "agent"),
         }
         if method == "item/started":
-            if record["status"] != "inProgress": return AppServerEvidence(AppServerVerdict.MISMATCH)
+            if completed is not None or record["status"] != "inProgress": return AppServerEvidence(AppServerVerdict.MISMATCH)
             if started is None: started = record
             elif record != started: return AppServerEvidence(AppServerVerdict.MISMATCH)
-        elif completed is None: completed = record
-        elif record != completed: return AppServerEvidence(AppServerVerdict.MISMATCH)
+        else:
+            if started is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
+            if completed is None: completed = record
+            elif record != completed: return AppServerEvidence(AppServerVerdict.MISMATCH)
 
     if completed is None or started is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     required = (completed["thread_id"], completed["turn_id"], completed["call_id"], completed["process_id"])
