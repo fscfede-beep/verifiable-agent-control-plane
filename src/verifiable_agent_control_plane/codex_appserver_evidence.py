@@ -29,6 +29,7 @@ class AppServerEvidence:
 def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppServerEvidence:
     started: dict[str, Any] | None = None
     completed: dict[str, Any] | None = None
+    completed_count = 0
     completed_turns: set[tuple[str, str]] = set()
     allowed_sources = {"agent", "userShell", "unifiedExecStartup", "unifiedExecInteraction"}
     for event in events:
@@ -47,7 +48,10 @@ def evaluate_appserver_notifications(events: Iterable[dict[str, Any]]) -> AppSer
             "process_id": item.get("processId"), "status": item.get("status"), "exit_code": item.get("exitCode"), "source": item.get("source", "agent"),
         }
         if method == "item/started": started = record
-        else: completed = record
+        else:
+            completed_count += 1
+            if completed_count > 1: return AppServerEvidence(AppServerVerdict.MISMATCH)
+            completed = record
 
     if completed is None: return AppServerEvidence(AppServerVerdict.UNKNOWN)
     required = (completed["thread_id"], completed["turn_id"], completed["call_id"], completed["process_id"])
