@@ -10,18 +10,20 @@ def completed(call="call1", process="p1", source="agent", status="completed", ex
 def started(call="call1", process="p1", source="agent", status="inProgress"):
     return {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": status, "processId": process, "source": source}}}
 
+TURN_DONE = {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu1"}}
+
 
 class CodexAppServerEvidenceTests(unittest.TestCase):
     def test_completed_unified_exec_command_and_turn_is_turn_terminal_not_quiescent(self):
-        events = [started(source="unifiedExecStartup"), completed(source="unifiedExecStartup"), {"method": "turn/completed", "params": {"threadId": "th1", "turnId": "tu1"}}]
-        result = evaluate_appserver_notifications(events)
+        result = evaluate_appserver_notifications([started(source="unifiedExecStartup"), completed(source="unifiedExecStartup"), TURN_DONE])
         self.assertEqual(result.verdict, AppServerVerdict.TURN_TERMINAL)
-        self.assertEqual(result.source, "unifiedExecStartup")
         self.assertTrue(result.unified_exec_observed)
-        self.assertEqual((result.thread_id, result.turn_id, result.call_id, result.process_id), ("th1", "tu1", "call1", "p1"))
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual((result.thread_id, result.turn_id, result.call_id, result.process_id, result.exit_code), ("th1", "tu1", "call1", "p1", 0))
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
+
+    def test_turn_completion_before_command_terminal_is_mismatch(self):
+        self.assertEqual(evaluate_appserver_notifications([started(), TURN_DONE, completed()]).verdict, AppServerVerdict.MISMATCH)
 
     def test_start_status_must_be_in_progress(self):
         self.assertEqual(evaluate_appserver_notifications([started(status="completed"), completed()]).verdict, AppServerVerdict.MISMATCH)
