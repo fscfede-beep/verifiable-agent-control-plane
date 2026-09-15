@@ -19,6 +19,13 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
 
+    def test_two_completed_commands_are_not_silently_collapsed(self):
+        events = [
+            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "completed", "processId": "p1", "source": "agent", "exitCode": 0}}},
+            {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call2", "type": "commandExecution", "status": "completed", "processId": "p2", "source": "agent", "exitCode": 0}}},
+        ]
+        self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
+
     def test_failed_status_with_zero_exit_is_mismatch(self):
         events = [{"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": "call1", "type": "commandExecution", "status": "failed", "processId": "p1", "source": "agent", "exitCode": 0}}}]
         self.assertEqual(evaluate_appserver_notifications(events).verdict, AppServerVerdict.MISMATCH)
