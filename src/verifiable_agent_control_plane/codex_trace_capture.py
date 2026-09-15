@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+
+DEFAULT_PROMPT = (
+    "Run one harmless shell command that prints exactly RUMBO_TRACE_OK, then stop. "
+    "Do not create, modify, or delete files."
+)
 
 
 @dataclass(frozen=True)
@@ -88,3 +95,29 @@ def capture_codex_trace(
         encoding="utf-8",
     )
     return report
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Capture a read-only ephemeral Codex exec JSONL trace with evidence hashes."
+    )
+    parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--codex", default="codex")
+    parser.add_argument("--cwd", type=Path, default=Path.cwd())
+    parser.add_argument("--prompt", default=DEFAULT_PROMPT)
+    parser.add_argument("--timeout", type=int, default=120)
+    args = parser.parse_args(argv)
+
+    report = capture_codex_trace(
+        codex_executable=args.codex,
+        output_dir=args.output_dir,
+        prompt=args.prompt,
+        cwd=args.cwd,
+        timeout_seconds=args.timeout,
+    )
+    print(json.dumps(asdict(report), sort_keys=True))
+    return 0 if report.exit_code == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
