@@ -55,6 +55,8 @@ class CodexTraceCaptureTests(unittest.TestCase):
             self.assertIn("--json", metadata["argv"])
             self.assertIn("--ephemeral", metadata["argv"])
             self.assertIn("read-only", metadata["argv"])
+            self.assertNotIn("-a", metadata["argv"])
+            self.assertNotIn("--ask-for-approval", metadata["argv"])
             self.assertEqual(metadata["observation_surface"], "codex_exec_json")
             self.assertEqual(metadata["unified_exec_coverage"], "NOT_PROVEN")
             self.assertFalse(metadata["sufficient_for_toolfinish_correlation"])
