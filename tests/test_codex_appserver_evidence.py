@@ -7,8 +7,8 @@ def completed(call="call1", process="p1", source="agent", status="completed", ex
     return {"method": "item/completed", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": status, "processId": process, "source": source, "exitCode": exit_code}}}
 
 
-def started(call="call1", process="p1", source="agent"):
-    return {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": "inProgress", "processId": process, "source": source}}}
+def started(call="call1", process="p1", source="agent", status="inProgress"):
+    return {"method": "item/started", "params": {"threadId": "th1", "turnId": "tu1", "item": {"id": call, "type": "commandExecution", "status": status, "processId": process, "source": source}}}
 
 
 class CodexAppServerEvidenceTests(unittest.TestCase):
@@ -22,6 +22,9 @@ class CodexAppServerEvidenceTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertFalse(result.toolfinish_observed)
         self.assertFalse(result.quiescence_proven)
+
+    def test_start_status_must_be_in_progress(self):
+        self.assertEqual(evaluate_appserver_notifications([started(status="completed"), completed()]).verdict, AppServerVerdict.MISMATCH)
 
     def test_completion_without_start_is_unknown(self):
         self.assertEqual(evaluate_appserver_notifications([completed()]).verdict, AppServerVerdict.UNKNOWN)
