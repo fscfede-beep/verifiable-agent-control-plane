@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 jobs:
   verify-and-publish:
@@ -37,7 +38,7 @@ jobs:
           test "${actual_head}" = "${expected_head}"
           test "${actual_blob}" = "${expected_blob}"
 
-      - name: Publish provider-originated readback issue
+      - name: Publish provider-originated readback to transport PR
         env:
           GH_TOKEN: ${{ github.token }}
           ACTUAL_HEAD: ${{ steps.verify.outputs.actual_head }}
@@ -45,24 +46,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          title="RUMBO_GEMINI_INDEPENDENT_READBACK_PASS ${ACTUAL_HEAD}"
           body="$(cat <<EOF
-          Provider: GitHub Actions
-          Verification: PASS
+          [RUMBO_GEMINI_PROVIDER_READBACK_PASS]
+          Provider: github-actions[bot]
           Source branch inspected: federation/gemini-pro-primary
           Actual HEAD: ${ACTUAL_HEAD}
           ACK path: federation/GEMINI_PRO_PRIMARY/GEMINI_ROUNDTRIP_ACK_V1.json
           Actual Git blob SHA: ${ACTUAL_BLOB}
+          Verification: PASS
           Control-plane promotion: NO
           Merge: NO
           Production: NO
-          Purpose: provider-originated evidence for independent Gemini readback through Gmail.
           EOF
           )"
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues"             -f title="${title}"             -f body="${body}"
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/57/comments" -f body="${body}"
 
       - name: Intentional notification carrier failure
         shell: bash
         run: |
-          echo "::error::Intentional carrier failure after successful readback publication. This is not a verification failure."
+          echo "::error::Intentional carrier failure after provider-originated readback publication. Verification already passed."
           exit 1
