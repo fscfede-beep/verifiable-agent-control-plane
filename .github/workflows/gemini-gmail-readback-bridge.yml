@@ -1,0 +1,68 @@
+name: RUMBO Gemini Gmail Readback Bridge
+
+on:
+  push:
+    branches:
+      - bridge/gemini-gmail-readback-v1
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact Gemini federation branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: federation/gemini-pro-primary
+          fetch-depth: 0
+
+      - name: Verify remote branch head and ACK blob
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_head="4a96fe14283694d5c0da2d3ab00bc426323c18bd"
+          expected_blob="53cbe92c39234906d4ed0f3cf1fdad04f613491c"
+          ack_path="federation/GEMINI_PRO_PRIMARY/GEMINI_ROUNDTRIP_ACK_V1.json"
+
+          actual_head="$(git rev-parse HEAD)"
+          actual_blob="$(git rev-parse "HEAD:${ack_path}")"
+
+          echo "actual_head=${actual_head}" >> "$GITHUB_OUTPUT"
+          echo "actual_blob=${actual_blob}" >> "$GITHUB_OUTPUT"
+
+          test "${actual_head}" = "${expected_head}"
+          test "${actual_blob}" = "${expected_blob}"
+
+      - name: Publish provider-originated readback issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTUAL_HEAD: ${{ steps.verify.outputs.actual_head }}
+          ACTUAL_BLOB: ${{ steps.verify.outputs.actual_blob }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="RUMBO_GEMINI_INDEPENDENT_READBACK_PASS ${ACTUAL_HEAD}"
+          body="$(cat <<EOF
+          Provider: GitHub Actions
+          Verification: PASS
+          Source branch inspected: federation/gemini-pro-primary
+          Actual HEAD: ${ACTUAL_HEAD}
+          ACK path: federation/GEMINI_PRO_PRIMARY/GEMINI_ROUNDTRIP_ACK_V1.json
+          Actual Git blob SHA: ${ACTUAL_BLOB}
+          Control-plane promotion: NO
+          Merge: NO
+          Production: NO
+          Purpose: provider-originated evidence for independent Gemini readback through Gmail.
+          EOF
+          )"
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues"             -f title="${title}"             -f body="${body}"
+
+      - name: Intentional notification carrier failure
+        shell: bash
+        run: |
+          echo "::error::Intentional carrier failure after successful readback publication. This is not a verification failure."
+          exit 1
