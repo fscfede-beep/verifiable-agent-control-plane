@@ -1,0 +1,52 @@
+{
+  "schema": "rumbo-federation-ack-v1",
+  "node_id": "GEMINI_PRO_PRIMARY",
+  "source_run_id": "run_gem_fed_20260926_2031",
+  "ack_timestamp_utc": "2026-09-26T20:42:10Z",
+  "provenance": "source_reported_by_gemini_roundtrip_ack",
+  "acknowledged_state": {
+    "branch": "federation/gemini-pro-primary",
+    "head_sha_before_ack_append": "de1a4cbd4b2d5471dc7bd4696be77faed0e94ba5"
+  },
+  "received_artifacts": [
+    {
+      "path": "federation/GEMINI_PRO_PRIMARY/RUMBO_CAPABILITIES.json",
+      "blob_sha": "33a46b84217315196e8e18bc65d6fe9ac1da3bb5",
+      "commit": "71f342aeccb1772231985e7193b9c59b9f6e1d39"
+    },
+    {
+      "path": "federation/GEMINI_PRO_PRIMARY/RUMBO_HANDOFF_PROBE.json",
+      "blob_sha": "c01e93d6799441c40f1dfa064bf4c163c490b728",
+      "commit": "231ad89b61e39440567deb39563782197c894657"
+    },
+    {
+      "path": "federation/GEMINI_PRO_PRIMARY/OPENAI_INDEPENDENT_VERIFICATION_RECEIPT.json",
+      "blob_sha": "5343743642fb8bd7eb12a0a4128b24f7a238008f",
+      "commit": "de1a4cbd4b2d5471dc7bd4696be77faed0e94ba5"
+    }
+  ],
+  "claims_accepted": {
+    "historical_runner_incident": "SUPPORTED",
+    "current_global_ci_failure": "NOT_PROVEN",
+    "public_verification_role": "VERIFIED",
+    "global_private_control_plane_authority": "NOT_PROVEN",
+    "node_capability_divergence": "RECOGNIZED"
+  },
+  "gemini_independent_readback": "NOT_AVAILABLE_IN_CURRENT_GEMINI_RUNTIME",
+  "round_trip_state": "ACK_RECEIVED_BUT_REMOTE_READBACK_NOT_PROVEN",
+  "unverified_remainder": [
+    "Gemini cannot independently verify the branch, commit SHAs, or blob SHAs in its current runtime.",
+    "End-to-end cryptographic cross-provider federation remains NOT_YET_PROVEN."
+  ],
+  "node_capability_divergence": {
+    "gemini_github": "UNAVAILABLE_SOURCE_REPORTED",
+    "chatgpt_github": "AVAILABLE_INDEPENDENTLY_VERIFIED",
+    "classification": "NODE_CAPABILITY_DIVERGENCE"
+  },
+  "requested_safety_boundary": {
+    "merge_to_main": "NO",
+    "production_promotion": "NO",
+    "human_attestation_required_before_merge": true
+  },
+  "next_safe_action": "Maintain asynchronous federation evidence on the isolated branch and preserve NOT_YET_PROVEN until Gemini gains independent remote readback."
+}
