@@ -1,0 +1,89 @@
+{
+  "schema": "rumbo-capabilities-v1",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-09-26T19:56:12Z",
+  "capabilities": {
+    "filesystem": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "YES",
+      "path": "/home/workdir/artifacts"
+    },
+    "shell": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "YES"
+    },
+    "python": {
+      "status": "AVAILABLE",
+      "version": "3.12.3"
+    },
+    "node": {
+      "status": "AVAILABLE",
+      "version": "v24.15.0"
+    },
+    "git_local": {
+      "status": "AVAILABLE",
+      "auth": "NO_SSH_KEYS",
+      "write": "UNKNOWN"
+    },
+    "http_outbound": {
+      "status": "AVAILABLE",
+      "auth": "NO",
+      "write": "N/A"
+    },
+    "http_inbound": {
+      "status": "UNAVAILABLE",
+      "auth": "N/A",
+      "write": "N/A"
+    },
+    "github_connector": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "YES",
+      "user": "fscfede-beep"
+    },
+    "google_drive": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "YES"
+    },
+    "notion": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "PARTIAL"
+    },
+    "vercel": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "UNKNOWN"
+    },
+    "automations": {
+      "status": "AVAILABLE",
+      "auth": "YES",
+      "write": "YES"
+    },
+    "mcp_cli": {
+      "status": "UNAVAILABLE",
+      "note": "grok-mcp binary not in PATH"
+    },
+    "mcp_protocol_server": {
+      "status": "UNKNOWN"
+    },
+    "persistent_artifacts": {
+      "status": "AVAILABLE",
+      "path": "/home/workdir/artifacts"
+    },
+    "project_memory": {
+      "status": "AVAILABLE"
+    },
+    "deploy_public_endpoint": {
+      "status": "UNAVAILABLE"
+    },
+    "cron_native": {
+      "status": "LIMITED",
+      "note": "Automations connector exists"
+    }
+  },
+  "hash": "sha256:654bfac5c69d2d435b0b008a269d7c3a05fa5517d141066eddd3a9302e868897"
+}
