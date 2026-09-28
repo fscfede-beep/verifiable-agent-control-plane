@@ -22,7 +22,14 @@ from .canonical import (
     advance,
     resume_state,
 )
-from .transport import (\n    GrokTransportEnvelope,\n    GrokTransportReceipt,\n    GrokTransportState,\n    HumanKillSwitch,\n    TransportCandidate,\n    TransportCandidateError,\n)
+from .transport import (
+    GrokTransportEnvelope,
+    GrokTransportReceipt,
+    GrokTransportState,
+    HumanKillSwitch,
+    TransportCandidate,
+    TransportCandidateError,
+)
 from .security import (
     ActionGrant,
     ApprovalAnchor,
@@ -60,7 +67,12 @@ __all__ = [
     "SecurityPolicy",
     "SecurityReceipt",
     "SCHEMA_VERSION",
-    "GrokTransportEnvelope",\n    "GrokTransportReceipt",\n    "GrokTransportState",\n    "HumanKillSwitch",\n    "TransportCandidateError",\n    "TransportCandidate",
+    "TransportCandidateError",
+    "TransportCandidate",
+    "HumanKillSwitch",
+    "GrokTransportState",
+    "GrokTransportReceipt",
+    "GrokTransportEnvelope",
     "advance",
     "decide",
     "evaluate_security",
