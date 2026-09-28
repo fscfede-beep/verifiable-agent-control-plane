@@ -1,0 +1,50 @@
+{
+  "schema": "rumbo-grok-autonomous-transport-candidate-receipt-v1",
+  "candidate": "RUMBO_GROK_AUTONOMOUS_TRANSPORT_CANDIDATE_V1",
+  "repository": "fscfede-beep/verifiable-agent-control-plane",
+  "branch": "candidate/grok-autonomous-transport-v1",
+  "subject_commit": "e52a1c7be5e42658f29ca16bde0456ad977b4269",
+  "documentation_commit": "008035a987903f95f511dd4cca06a5a019b30fd2",
+  "tdd": {
+    "red_run_id": 36384108573,
+    "red_reason": "missing candidate transport security API",
+    "green_run_id": 36384236596,
+    "green_conclusion": "success",
+    "python_matrix": [
+      "3.11",
+      "3.12",
+      "3.13"
+    ]
+  },
+  "guarantees": {
+    "candidate_only": true,
+    "authority": false,
+    "production": false,
+    "replay_protection": true,
+    "idempotency": true,
+    "schema_validation": true,
+    "audit_receipts": true,
+    "human_gate": true,
+    "network_io_in_candidate": false
+  },
+  "not_proven": [
+    "autonomous_machine_to_machine_link",
+    "cryptographic_node_identity",
+    "mcp_bridge",
+    "inbound_webhook",
+    "external_durable_storage",
+    "control_plane_promotion",
+    "production",
+    "end_to_end_federation"
+  ],
+  "frozen_chain": {
+    "branch": "federation/grok-build-primary",
+    "base": "97017a374f80c32688c6e67003ef6e93181b5ac8",
+    "probe": "834e74a48ace7865b3501bf7d495c296a35198ee",
+    "receipt": "f74be2f68fbac30190b5105d19e99a1153b85eec",
+    "mutation_authorized": false
+  },
+  "control_plane_promotion": "NO",
+  "production": "NO",
+  "next_safe_action": "Keep candidate isolated. Require separate explicit authorization before any real provider transport adapter or external effect."
+}
