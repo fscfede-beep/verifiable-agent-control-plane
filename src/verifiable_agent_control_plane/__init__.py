@@ -22,7 +22,8 @@ from .canonical import (
     advance,
     resume_state,
 )
-from .transport import TransportCandidate\nfrom .security import (
+from .transport import TransportCandidate
+from .security import (
     ActionGrant,
     ApprovalAnchor,
     ApprovalEvidence,
@@ -58,7 +59,8 @@ __all__ = [
     "SecurityDecision",
     "SecurityPolicy",
     "SecurityReceipt",
-    "SCHEMA_VERSION",\n    "TransportCandidate",
+    "SCHEMA_VERSION",
+    "TransportCandidate",
     "advance",
     "decide",
     "evaluate_security",
