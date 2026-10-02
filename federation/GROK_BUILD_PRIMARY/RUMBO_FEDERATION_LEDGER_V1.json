@@ -1,8 +1,8 @@
 {
   "schema": "rumbo-federation-ledger-v1",
-  "ledger_id": "ledger-grok-20261002-final",
+  "ledger_id": "ledger-grok-20261002-final-v2",
   "node_id": "GROK_BUILD_PRIMARY",
-  "timestamp": "2026-10-02T23:27:30Z",
+  "timestamp": "2026-10-02T23:57:30Z",
   "purpose": "Single source of truth consolidating all environments, chain, hashes and open items",
   "identity": {
     "node_id": "GROK_BUILD_PRIMARY",
@@ -15,14 +15,15 @@
     {"sha": "834e74a48ace7865b3501bf7d495c296a35198ee", "role": "probe+capabilities", "date": "2026-09-26"},
     {"sha": "f74be2f68fbac30190b5105d19e99a1153b85eec", "role": "openai_independent_verification_receipt", "date": "2026-09-26"},
     {"sha": "4bc3736049e9b50165d241e4486726253a877057", "role": "grok_mutual_readback+reconciliation", "date": "2026-10-02"},
-    {"sha": "1f58a3713e811da40c7980d03639d2809bb96a74", "role": "canonical_hash_spec_v1+self_audit", "date": "2026-10-02"}
+    {"sha": "1f58a3713e811da40c7980d03639d2809bb96a74", "role": "canonical_hash_spec_v1+self_audit", "date": "2026-10-02"},
+    {"sha": "a89d2e40e3e0d3e823b7a59e3228d544e65c3703", "role": "unified_ledger_v1+state_v3", "date": "2026-10-02"}
   ],
-  "current_head": "1f58a3713e811da40c7980d03639d2809bb96a74",
+  "current_head": "a89d2e40e3e0d3e823b7a59e3228d544e65c3703",
   "main_sha": "97017a374f80c32688c6e67003ef6e93181b5ac8",
   "main_untouched": true,
   "environments": {
-    "local_artifacts": {"status": "CONSISTENT", "path": "/home/workdir/artifacts/rumbo-federation", "files": 11},
-    "github_evidence_plane": {"status": "CONSISTENT", "branch": "federation/grok-build-primary", "head": "1f58a3713e811da40c7980d03639d2809bb96a74"},
+    "local_artifacts": {"status": "CONSISTENT", "path": "/home/workdir/artifacts/rumbo-federation", "files": 15},
+    "github_evidence_plane": {"status": "CONSISTENT", "branch": "federation/grok-build-primary", "head": "a89d2e40e3e0d3e823b7a59e3228d544e65c3703"},
     "frozen_bundle": {"status": "INTACT", "name": "RUMBO_GROK_FEDERATION_EVIDENCE_V1"},
     "project_memory": {"status": "CURRENT"},
     "github_main": {"status": "PROTECTED", "sha": "97017a374f80c32688c6e67003ef6e93181b5ac8"},
@@ -44,7 +45,7 @@
   "claimed_chain": [
     "DISCOVERED", "AUTHENTICATED", "CONNECTED", "EXECUTED", "VERIFIED",
     "RECOVERABLE", "AUDITABLE", "MUTUAL_READBACK", "SELF_AUDITED",
-    "CANONICAL_HASH_SPEC_PUBLISHED", "LEDGER_PUBLISHED"
+    "CANONICAL_HASH_SPEC_PUBLISHED", "LEDGER_PUBLISHED", "LEDGER_HEAD_CORRECTED"
   ],
   "still_open": [
     "OpenAI receipt content-hash algorithm alignment (different canonicalization)",
@@ -59,5 +60,5 @@
     "Do not claim production readiness or control-plane replacement"
   ],
   "status": "VERIFIED",
-  "hash": "sha256:84f77a4e923d340894ff8c06eb417d6ceb4b2e97cb5b095fd22ecb42a5847271"
+  "hash": "sha256:cbbf116d4223af0c00ecca455aa527efe2fec4e08a67358d0b1a62124500d660"
 }
