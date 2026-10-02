@@ -1,0 +1,46 @@
+{
+  "schema": "rumbo-grok-independent-verification-v1",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "exported_at": "2026-10-02T23:24:37Z",
+  "claimed_chain": [
+    "DISCOVERED",
+    "AUTHENTICATED",
+    "CONNECTED",
+    "EXECUTED",
+    "VERIFIED",
+    "RECOVERABLE",
+    "AUDITABLE",
+    "MUTUAL_READBACK",
+    "SELF_AUDITED",
+    "CANONICAL_HASH_SPEC_PUBLISHED"
+  ],
+  "github": {
+    "owner": "fscfede-beep",
+    "repository": "verifiable-agent-control-plane",
+    "url": "https://github.com/fscfede-beep/verifiable-agent-control-plane",
+    "visibility": "PUBLIC",
+    "default_branch": "main",
+    "work_branch": "federation/grok-build-primary",
+    "head_sha_at_audit": "4bc3736049e9b50165d241e4486726253a877057",
+    "frozen_probe_commit": "834e74a48ace7865b3501bf7d495c296a35198ee",
+    "openai_receipt_commit": "f74be2f68fbac30190b5105d19e99a1153b85eec",
+    "pr_number": "NONE",
+    "pr_url": "NONE"
+  },
+  "round_trip_status": "ROUND_TRIP_MUTUAL_READBACK",
+  "end_to_end_federation": "PARTIAL_PROVEN",
+  "canonical_hash_spec": "rumbo-canonical-hash-spec-v1",
+  "remote_readback": {
+    "method": "github connector get_file_contents",
+    "openai_receipt_present": true,
+    "probe_match": true,
+    "all_grok_objects_present": true
+  },
+  "open_items": [
+    "content_hash_algorithm_alignment_openai",
+    "mcp_bridge",
+    "inbound_webhook",
+    "production_promotion"
+  ],
+  "hash": "sha256:74aa696b91ae46a7e647a0af15933e845d79fcc32ba4f2991c0467306a331919"
+}

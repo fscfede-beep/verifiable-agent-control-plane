@@ -1,0 +1,29 @@
+{
+  "schema": "rumbo-canonical-hash-spec-v1",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-02T23:24:37Z",
+  "version": "1.0.0",
+  "algorithm": "SHA-256",
+  "encoding": "UTF-8",
+  "json_rules": {
+    "exclude_keys": ["hash"],
+    "sort_keys": true,
+    "separators": [",", ":"],
+    "ensure_ascii": false,
+    "no_trailing_newline_in_canonical_string": true
+  },
+  "prefix": "sha256:",
+  "reference_implementation": "python: json.dumps(obj_without_hash, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8') -> hashlib.sha256",
+  "status": "PROPOSED_AND_APPLIED_BY_GROK",
+  "compliance_matrix": {
+    "RUMBO_HANDOFF_PROBE.json": true,
+    "RUMBO_CAPABILITIES.json": true,
+    "RUMBO_RECEIPT.json": true,
+    "GROK_OPENAI_READBACK_RECEIPT.json": true,
+    "RUMBO_ENVIRONMENT_RECONCILIATION.json": true,
+    "RUMBO_CAPABILITIES_20261002.json": true,
+    "OPENAI_INDEPENDENT_VERIFICATION_RECEIPT.json": false,
+    "note": "OpenAI receipt uses a different (unknown) canonicalization; bytes and semantic fields remain valid"
+  },
+  "hash": "sha256:565d155b3e9e394828f9f75c4f76bdba8cc1d069f75e7eef633050227242fbd0"
+}

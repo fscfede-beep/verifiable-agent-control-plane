@@ -1,0 +1,80 @@
+{
+  "schema": "rumbo-federation-self-audit-v1",
+  "receipt_id": "rcpt-grok-self-audit-20261002-002",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-02T23:24:37Z",
+  "action": "deep_environment_reconciliation_and_self_audit",
+  "environments": {
+    "local_artifacts": {
+      "path": "/home/workdir/artifacts/rumbo-federation",
+      "status": "AVAILABLE",
+      "files_verified": 8,
+      "all_grok_objects_hash_match": true
+    },
+    "github_evidence_plane": {
+      "owner": "fscfede-beep",
+      "repo": "verifiable-agent-control-plane",
+      "branch": "federation/grok-build-primary",
+      "head_sha": "4bc3736049e9b50165d241e4486726253a877057",
+      "frozen_probe_commit": "834e74a48ace7865b3501bf7d495c296a35198ee",
+      "openai_receipt_commit": "f74be2f68fbac30190b5105d19e99a1153b85eec",
+      "status": "AVAILABLE",
+      "write_confirmed": true,
+      "main_untouched": true
+    },
+    "frozen_evidence_bundle": {
+      "path": "RUMBO_GROK_FEDERATION_EVIDENCE_V1",
+      "status": "INTACT",
+      "probe_sha_match": true
+    },
+    "project_memory": {
+      "status": "AVAILABLE",
+      "updated": true
+    },
+    "github_main": {
+      "sha": "97017a374f80c32688c6e67003ef6e93181b5ac8",
+      "federation_dir_present": false,
+      "status": "PROTECTED_NO_MUTATION"
+    },
+    "connectors": {
+      "github": {"status": "AVAILABLE", "auth": "YES", "write": "YES"},
+      "google_drive": {"status": "AVAILABLE", "auth": "YES"},
+      "notion": {"status": "AVAILABLE", "auth": "YES"},
+      "vercel": {"status": "AVAILABLE", "auth": "YES"},
+      "automations": {"status": "AVAILABLE", "auth": "YES"},
+      "http_inbound": {"status": "UNAVAILABLE"},
+      "mcp_cli": {"status": "UNAVAILABLE"},
+      "deploy_public_endpoint": {"status": "UNAVAILABLE"}
+    }
+  },
+  "chain": {
+    "probe": "834e74a48ace7865b3501bf7d495c296a35198ee",
+    "openai_ack": "f74be2f68fbac30190b5105d19e99a1153b85eec",
+    "grok_mutual_readback": "4bc3736049e9b50165d241e4486726253a877057",
+    "message_id": "19ce1c95-b988-4aa8-9d41-63e6a2074c65"
+  },
+  "hash_compliance": {
+    "canonical_spec": "rumbo-canonical-hash-spec-v1",
+    "grok_objects_compliant": true,
+    "openai_receipt_compliant": false,
+    "openai_receipt_note": "Different canonicalization; file bytes and semantics valid; recorded as open item"
+  },
+  "round_trip_status": "ROUND_TRIP_MUTUAL_READBACK",
+  "end_to_end_federation": "PARTIAL_PROVEN",
+  "reconciliation_result": "CONSISTENT_WITH_OPEN_ITEMS",
+  "still_open": [
+    "OpenAI receipt content-hash algorithm alignment",
+    "MCP bridge",
+    "inbound webhook",
+    "production promotion",
+    "signed commits"
+  ],
+  "next_safe_actions": [
+    "Publish RUMBO_CANONICAL_HASH_SPEC_V1 on federation branch",
+    "Keep fail-closed; no main mutation",
+    "Invite OpenAI node to adopt or document its canonicalization",
+    "Do not claim production readiness"
+  ],
+  "status": "VERIFIED",
+  "hash": "sha256:b2da36d01c5d5c76c2d83f707a325fd2d5f0ec403c0f737bc26b2efc9765d6be"
+}
