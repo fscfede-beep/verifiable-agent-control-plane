@@ -1,0 +1,33 @@
+{
+  "schema": "rumbo-grok-readback-receipt-v1",
+  "receipt_id": "rcpt-grok-openai-readback-20261002-001",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-02T23:09:40Z",
+  "action": "independent_readback_openai_verification_receipt",
+  "source": {
+    "path_remote": "federation/GROK_BUILD_PRIMARY/OPENAI_INDEPENDENT_VERIFICATION_RECEIPT.json",
+    "branch": "federation/grok-build-primary",
+    "commit_sha_when_read": "f74be2f68fbac30190b5105d19e99a1153b85eec",
+    "local_path": "rumbo-federation/OPENAI_INDEPENDENT_VERIFICATION_RECEIPT.json"
+  },
+  "verified": {
+    "remote_exists": true,
+    "local_file_sha256": "1a768d5d838571e8bd084b27deabc0f5ac2d5c20420dfa036bceba8e3899f525",
+    "content_hash_recomputed_canonical": "sha256:75632012d81eec7bf455845cab00366c3e66b9119474dcd545bbd79af8f0942d",
+    "content_hash_stored_in_file": "sha256:a05bbecd0c6d60fd903c98aeb2a739daa970227151a0f7977525612e8e2a9d87",
+    "content_hash_openai_declared": "sha256:b7c4f95ef9cca1dd13933eb424b2b6725fcbb610e64f389a3c7ddca836216be9",
+    "content_hash_match_stored": false,
+    "content_hash_note": "Stored hash does not match standard JSON canonicalization (sort_keys + compact). File bytes and semantic fields are intact; hash algorithm/ordering used by OpenAI node is not reproduced. Fail-closed note recorded.",
+    "source_message_id": "19ce1c95-b988-4aa8-9d41-63e6a2074c65",
+    "round_trip_status_declared": "ROUND_TRIP_PARTIAL",
+    "end_to_end_federation_declared": "NOT_YET_PROVEN"
+  },
+  "status": "VERIFIED_WITH_HASH_ALGORITHM_NOTE",
+  "notes": [
+    "Grok node independently read back the OpenAI verification receipt from GitHub evidence plane",
+    "File presence + SHA256 of bytes confirmed; semantic fields consistent",
+    "Internal content-hash field of OpenAI receipt does not match Grok canonicalization — recorded as open item",
+    "Still no inbound webhook / MCP bridge / production promotion"
+  ],
+  "hash": "sha256:d89a5b08d3ec60f89d169b2c574f2b6317c6786d905fcd5a851f6b36b98a1e97"
+}
