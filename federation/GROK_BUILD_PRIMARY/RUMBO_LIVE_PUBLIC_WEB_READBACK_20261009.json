@@ -1,0 +1,22 @@
+{
+  "schema": "rumbo-live-public-web-readback-v1",
+  "receipt_id": "rcpt-grok-web-live-20261009-001",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-10T01:36:50Z",
+  "url": "https://rumbo.verso.fans/",
+  "http_code": 200,
+  "redirects": 0,
+  "content_type": "text/html; charset=utf-8",
+  "size_bytes": 20762,
+  "title": "RUMBO IA — Operational AI Systems",
+  "privacy_checks": {
+    "has_sebastian_firstname": true,
+    "has_linkedin_in_profile_url": false,
+    "has_rel_me": false,
+    "policy_alignment_r64": "PASS_ON_OBSERVED_MARKERS"
+  },
+  "authority_note": "Public web LIVE is SEPARATE from product production. Product production remains NO_GO.",
+  "production_gate": "CLOSED_FAIL_CLOSED",
+  "status": "VERIFIED",
+  "hash": "sha256:080f0f7ba728a78bf5949be7231670c8c5163b38c157fff5088cbb27a1c43819"
+}
