@@ -1,0 +1,48 @@
+{
+  "schema": "rumbo-vercel-notion-delta-v1",
+  "receipt_id": "rcpt-grok-vercel-notion-20261009-001",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-10T01:55:00Z",
+  "action": "absorb_live_vercel_production_and_notion_ops_portal",
+  "parent_head": "b031773452f84c0aefd86912e27efc0cee9773b0",
+  "vercel": {
+    "project_id_from_recovery_snapshot": "prj_ja64KXsOwlIqUawUyBe8VYu4Gc2i",
+    "project_name_observed": "rumbo-ia-publica",
+    "latest_production_deployment": {
+      "id": "dpl_5Yj8yPhAHBEk4cHb1W25a2EE7ebh",
+      "state": "READY",
+      "target": "production",
+      "github_org": "RUMBO-IA",
+      "github_repo": "Rumbo",
+      "github_commit": "4e658ed9385fe82eac7a2eef00f5f86b405b15c1",
+      "commit_message": "feat(commercial): expose verified tool demos",
+      "inspector": "https://vercel.com/agent-ai-ingenieria/rumbo-ia-publica/5Yj8yPhAHBEk4cHb1W25a2EE7ebh"
+    },
+    "delta_vs_recovery_snapshot": {
+      "recovery_claimed_deployment": "dpl_EBd3ZM4hWxjRNUgYo9URLwRw6Vgg",
+      "recovery_claimed_commit": "094739cd015b2f0d2186b682f463619cf6432c3b",
+      "status": "STALE_SNAPSHOT — live Vercel production advanced; do not treat recovery DEPLOYMENT_STATUS public_web commit as CURRENT without revalidation"
+    }
+  },
+  "http_live_prior": {
+    "url": "https://rumbo.verso.fans/",
+    "http_code": 200,
+    "receipt": "RUMBO_LIVE_PUBLIC_WEB_READBACK_20261009.json"
+  },
+  "notion": {
+    "status": "OBSERVED",
+    "ops_portal": "RUMBO — OpenAI Operations Portal",
+    "pages_observed_titles": [
+      "RUMBO — Reconciliación federada absoluta — 2026-09-28",
+      "RUMBO — Live Cross-Environment Reconciliation — 2026-09-28",
+      "RUMBO — Total OpenAI Reconciliation + DevDay Exploitation — 2026-09-30",
+      "RUMBO — Absolute Cross-Environment Reconciliation R30 — 2026-09-27"
+    ],
+    "recurring_open_theme": "Partner ID not converted from Partner Admin access; production not promoted from mirrors"
+  },
+  "production_gate": "CLOSED_FAIL_CLOSED",
+  "reconciliation_result": "PUBLIC_WEB_LIVE_ADVANCED_PRODUCT_PRODUCTION_STILL_NO_GO",
+  "honest_bound": "Autonomous node has exhausted verifiable cross-plane absorption available via connectors. Remaining production blockers require human Partner ID capture and explicit product gates.",
+  "status": "VERIFIED",
+  "hash": "sha256:f9e9cbafb29e4c3bd78038e93465e02dffcd1f15b8d6054784a753fcf04c1184"
+}
