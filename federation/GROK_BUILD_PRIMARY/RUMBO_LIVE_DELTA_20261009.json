@@ -1,0 +1,75 @@
+{
+  "schema": "rumbo-live-delta-reconciliation-v1",
+  "receipt_id": "rcpt-grok-live-delta-20261009-002",
+  "node_id": "GROK_BUILD_PRIMARY",
+  "timestamp": "2026-10-10T01:34:51Z",
+  "action": "absorb_control_queue_recovery_deployment_status_and_gmail_partner_cases",
+  "parent_master": {
+    "commit": "07d1b002c0d61bb248ed358796b2dc8c9c6de704",
+    "result": "MASTER_CONSISTENT_ACROSS_OBSERVED_PLANES_WITH_OPEN_GATES"
+  },
+  "new_evidence": {
+    "control_queue_recovery": {
+      "repo": "fscfede-beep/rumbo-control-queue-recovery-20261001",
+      "head_observed": "cb093f3ac3d80193f31f3bf824b1b4f19c087d1e",
+      "deployment_status_overall": "PRODUCT_PRODUCTION_NO_GO_PUBLIC_WEB_LIVE",
+      "control_plane": "REVALIDATED_OPERATIONAL_GO (separate from product production)",
+      "public_web": {
+        "status": "LIVE_PRODUCTION_R64_PRIVACY_BASELINE",
+        "canonical_url": "https://rumbo.verso.fans/",
+        "note": "Public web authority SEPARATE from product production; snapshot semantics require live revalidation before current claim"
+      },
+      "agents_summary": {
+        "RUMBO_CANONICO": "GO_CONDITIONED",
+        "OPENCODE": "GO_CONDITIONED",
+        "GILDVOX": "PRODUCTION_NO_GO",
+        "RADAR": "READ_ONLY_GO",
+        "AUDITOR": "ACTIVE"
+      },
+      "readme_production": "NO_GO",
+      "automatic_external_cost": 0,
+      "secrets_in_chat_or_git": false
+    },
+    "gmail_partner_and_ops": {
+      "partner_admin_prior": "PROVEN case 15824755",
+      "cases_observed_recent": ["16071090", "16250207", "16252998", "16553984"],
+      "account_policy": "Option 2 confirmed: keep fscfede@gmail.com separate/unchanged; corporate contact sebastian@rumbo.verso.fans for Partner business contact when possible",
+      "partner_id_uuid": "STILL_NOT_RECOVERED",
+      "partner_portal_url": "https://partners.openai.com/",
+      "other_open_ops": [
+        "ChatGPT history/load failures documented",
+        "Computer Use Windows URL-confidence fail-closed documented",
+        "Desktop Voice / Work-Codex usage limit branch adjudicated separately"
+      ]
+    },
+    "drive_canonical_evidence_folder": {
+      "folder_id": "1wNTxdcnyn8xwcz9_LxCiDoAr3jhdLWUv",
+      "continuity_v2_artifacts_present": false,
+      "observed_in_folder": ["Fuente Única de Verdad only on targeted search"]
+    }
+  },
+  "reconciliation_with_master": {
+    "production_gate_alignment": "CONFIRMED — recovery DEPLOYMENT_STATUS overall PRODUCT_PRODUCTION_NO_GO matches federation production gate CLOSED_FAIL_CLOSED",
+    "public_web_not_product_production": "CONFIRMED — do not equate rumbo.verso.fans LIVE with product production GO",
+    "partner_id_still_open": true,
+    "no_contradiction_found": true
+  },
+  "honest_non_claims": [
+    "This node cannot message other AI chat sessions as peer agents",
+    "This node cannot complete Partner ID UI extraction",
+    "This node cannot flip production to GO",
+    "Public web LIVE does not authorize product production"
+  ],
+  "next_safe_actions": [
+    {"owner": "human", "action": "partners.openai.com Admin/Settings → Partner ID screenshot; partnersupport if still missing"},
+    {"owner": "human", "action": "Live revalidate rumbo.verso.fans before any CURRENT public-web claim"},
+    {"owner": "human", "action": "Do not treat control-plane operational GO as product production GO"},
+    {"owner": "GROK_BUILD_PRIMARY", "action": "Evidence-only on federation/grok-build-primary; never main; never production claim"}
+  ],
+  "round_trip_status": "ROUND_TRIP_MUTUAL_READBACK",
+  "end_to_end_federation": "PARTIAL_PROVEN",
+  "production_gate": "CLOSED_FAIL_CLOSED",
+  "reconciliation_result": "DELTA_ABSORBED_NO_PRODUCTION_CHANGE",
+  "status": "VERIFIED",
+  "hash": "sha256:d0eecc920a9d0d740286499370f0ea0c94d2da0ac07b11935740bf687e5172d9"
+}
