@@ -17,6 +17,35 @@ def verify_bytes(a, b):
         return p.returncode, p.stdout
 
 class StrictTwinContract(unittest.TestCase):
+    def test_reject_unknown_authorization_claim(self):
+        a, b = pair()
+        a["production_authorized"] = True
+        code, output = verify(a, b)
+        self.assertEqual(code, 2, output)
+        self.assertIn("unexpected_fields", output)
+
+    def test_reject_symmetric_unknown_claims(self):
+        a, b = pair()
+        a["signature_verified"] = b["signature_verified"] = True
+        self.assertEqual(verify(a, b)[0], 2)
+
+    def test_reject_nested_unknown_provenance(self):
+        a, b = pair()
+        b["provenance"] = {"verified": True}
+        self.assertEqual(verify(a, b)[0], 2)
+
+    def test_reject_numeric_overflow_in_undeclared_field(self):
+        a, b = pair()
+        for value in ("1e309", "-1e309"):
+            with self.subTest(value=value):
+                raw = json.dumps(a)[:-1] + ', "overflow": ' + value + '}'
+                self.assertEqual(verify_bytes(raw.encode(), b)[0], 2)
+
+    def test_reject_unpaired_surrogate_in_undeclared_field(self):
+        a, b = pair()
+        raw = json.dumps(a)[:-1] + ', "extra": "\\ud800"}'
+        self.assertEqual(verify_bytes(raw.encode(), b)[0], 2)
+
     def test_valid_v4_contract_passes(self):
         a, b = pair()
         code, output = verify(a, b)
