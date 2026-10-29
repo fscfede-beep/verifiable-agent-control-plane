@@ -1,0 +1,296 @@
+# Isolated experimental signer. No schedule/PR trigger, no production.
+name: Twin isolated signer bounded test
+on:
+  push:
+    branches: [test/twin-signer-isolated-review-20261029]
+    paths: ['.github/workflows/twin-signer-isolated-review.yml']
+permissions:
+  contents: read
+concurrency:
+  group: twin-isolated-signer-20261029
+  cancel-in-progress: false
+jobs:
+  test-a:
+    name: unprivileged-test-A
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4
+        with:
+          python-version: '3.13.17'
+      - name: Test and attest candidate A without OIDC signing permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role primary --id A --out "$RUNNER_TEMP/attestation-A.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unsigned-candidate-A
+          path: ${{ runner.temp }}/attestation-A.json
+          retention-days: 7
+          if-no-files-found: error
+  test-b:
+    name: unprivileged-test-B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4
+        with:
+          python-version: '3.13.17'
+      - name: Test and attest candidate B without OIDC signing permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role twin --id B --out "$RUNNER_TEMP/attestation-B.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unsigned-candidate-B
+          path: ${{ runner.temp }}/attestation-B.json
+          retention-days: 7
+          if-no-files-found: error
+  sign-a:
+    name: privileged-sign-A
+    needs: [test-a, test-b]
+    if: ${{ needs.test-a.result == 'success' && needs.test-b.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      # No checkout, pip or repository-sourced scripts in this privileged job.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-candidate-A
+          path: ${{ runner.temp }}/candidate-A
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-candidate-B
+          path: ${{ runner.temp }}/candidate-B
+      - name: Validate GitHub API job provenance and A/B immutable evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIDE: A
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          python - <<'PY_EVIDENCE'
+          import hashlib,json,os,pathlib,re,sys
+          repo=os.environ['GITHUB_REPOSITORY'];side=os.environ['SIDE']
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          def require(condition,msg):
+              if not condition: raise SystemExit(msg)
+          def unique(pairs):
+              result={}
+              for k,v in pairs:
+                  if k in result: raise ValueError('DUPLICATE_JSON_KEY')
+                  result[k]=v
+              return result
+          def deny_constant(v):raise ValueError('INVALID_JSON_CONSTANT')
+          def read(path):return json.loads(path.read_bytes(),object_pairs_hook=unique,parse_constant=deny_constant)
+          require(repo=='fscfede-beep/verifiable-agent-control-plane' and os.environ.get('GITHUB_REPOSITORY_ID')=='1356103408','REPOSITORY_MISMATCH')
+          require(os.environ['GITHUB_REF']=='refs/heads/test/twin-signer-isolated-review-20261029','REF_MISMATCH')
+          sha=os.environ['GITHUB_SHA'];require(bool(re.fullmatch('[0-9a-f]{40}',sha)),'INVALID_SHA')
+          jobs=read(root/'jobs.json')
+          require(isinstance(jobs,dict) and isinstance(jobs.get('jobs'),list),'JOBS_INVALID')
+          matched=[j for j in jobs['jobs'] if isinstance(j,dict) and j.get('name') in ('unprivileged-test-A','unprivileged-test-B')]
+          require(len(matched)==2 and set(j['name'] for j in matched)=={'unprivileged-test-A','unprivileged-test-B'},'TEST_JOBS_NOT_UNIQUE')
+          for j in matched:
+              require(j.get('status')=='completed' and j.get('conclusion')=='success','TEST_JOB_FAILURE')
+              require(type(j.get('runner_id')) is int and j['runner_id']>0,'RUNNER_MISSING')
+          require(matched[0]['runner_id']!=matched[1]['runner_id'],'DUPLICATE_RUNNER_ID')
+          docs={s:read(root/('candidate-'+s)/('attestation-'+s+'.json')) for s in 'AB'}
+          digests=('twin_spec_digest','tool_policy_digest','twin_bridge_sha256','ag_file_sha256','integration_registry_sha256','memory_policy_sha256')
+          for s,obj in docs.items():
+              require(isinstance(obj,dict) and obj.get('schema')=='rumbo-twin-attestation/v4','INVALID_SCHEMA')
+              require(obj.get('repository')==repo and obj.get('commit')==sha,'WRONG_REPO_COMMIT')
+              require((obj.get('environment_role'),obj.get('environment_id'))==(('primary','A') if s=='A' else ('twin','B')),'WRONG_TWIN_IDENTITY')
+              require(obj.get('tests')=='PASS' and obj.get('working_tree_clean') is True,'INVALID_TEST_RESULT')
+              require(obj.get('python')=='3.13.17' and obj.get('runtime_version')=='3.13.17','RUNTIME_DRIFT')
+              require(obj.get('tests_command')=='python -m unittest discover -s tests -v','INVALID_TEST_COMMAND')
+              require(isinstance(obj.get('platform'),str) and obj['platform'].startswith('Linux-'),'PLATFORM_INVALID')
+              for key in digests:
+                  require(isinstance(obj.get(key),str) and re.fullmatch('[0-9a-f]{64}',obj[key]),'DIGEST_MISSING_'+key)
+          for key in ('schema','repository','commit','python','runtime_version','platform','tests','tests_command','working_tree_clean',*digests):
+              require(docs['A'][key]==docs['B'][key],'CROSS_HOST_STRICT_MISMATCH_'+key)
+          path=root/('candidate-'+side)/('attestation-'+side+'.json')
+          print('ISOLATED_SIGNER_PREFLIGHT_'+side+'=PASS')
+          print('CANDIDATE_SHA256_'+side+'='+hashlib.sha256(path.read_bytes()).hexdigest())
+          PY_EVIDENCE
+      - name: Sign only previously checked A subject
+        id: signed
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ runner.temp }}/candidate-A/attestation-A.json
+      - name: Verify A certificate and signed digest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh version | head -1 | python -c 'import re,sys;s=sys.stdin.read().strip();m=re.fullmatch(r"gh version (\\d+)\\.(\\d+)\\.(\\d+)(?: \\(.*\\))?",s);assert m and int(m[1])==2 and int(m[2])>=102,"UNPATCHED_GH"'
+          gh attestation verify "$RUNNER_TEMP/candidate-A/attestation-A.json" \
+            --bundle "${{ steps.signed.outputs.bundle-path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/twin-signer-isolated-review.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            --format json > "$RUNNER_TEMP/verified-A.json"
+          python - <<'PY_VERIFIED'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          digest=hashlib.sha256((root/'candidate-A/attestation-A.json').read_bytes()).hexdigest()
+          results=json.loads((root/'verified-A.json').read_text())
+          assert isinstance(results,list) and len(results)==1,'NO_SINGLE_RESULT'
+          v=results[0]['verificationResult']['statement']
+          assert len(v['subject'])==1 and v['subject'][0]['digest']['sha256']==digest,'WRONG_SUBJECT'
+          print('ISOLATED_SIGSTORE_A_VERIFIED=PASS')
+          print('SUBJECT_SHA256_A='+digest)
+          PY_VERIFIED
+      - name: Retain signed A evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: isolated-signed-A
+          path: |
+            ${{ runner.temp }}/candidate-A/attestation-A.json
+            ${{ runner.temp }}/verified-A.json
+            ${{ steps.signed.outputs.bundle-path }}
+          retention-days: 7
+          if-no-files-found: error
+  sign-b:
+    name: privileged-sign-B
+    needs: [test-a, test-b]
+    if: ${{ needs.test-a.result == 'success' && needs.test-b.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      # No checkout, pip or repository-sourced scripts in this privileged job.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-candidate-A
+          path: ${{ runner.temp }}/candidate-A
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-candidate-B
+          path: ${{ runner.temp }}/candidate-B
+      - name: Validate GitHub API job provenance and A/B immutable evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIDE: B
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          python - <<'PY_EVIDENCE'
+          import hashlib,json,os,pathlib,re,sys
+          repo=os.environ['GITHUB_REPOSITORY'];side=os.environ['SIDE']
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          def require(condition,msg):
+              if not condition: raise SystemExit(msg)
+          def unique(pairs):
+              result={}
+              for k,v in pairs:
+                  if k in result: raise ValueError('DUPLICATE_JSON_KEY')
+                  result[k]=v
+              return result
+          def deny_constant(v):raise ValueError('INVALID_JSON_CONSTANT')
+          def read(path):return json.loads(path.read_bytes(),object_pairs_hook=unique,parse_constant=deny_constant)
+          require(repo=='fscfede-beep/verifiable-agent-control-plane' and os.environ.get('GITHUB_REPOSITORY_ID')=='1356103408','REPOSITORY_MISMATCH')
+          require(os.environ['GITHUB_REF']=='refs/heads/test/twin-signer-isolated-review-20261029','REF_MISMATCH')
+          sha=os.environ['GITHUB_SHA'];require(bool(re.fullmatch('[0-9a-f]{40}',sha)),'INVALID_SHA')
+          jobs=read(root/'jobs.json')
+          require(isinstance(jobs,dict) and isinstance(jobs.get('jobs'),list),'JOBS_INVALID')
+          matched=[j for j in jobs['jobs'] if isinstance(j,dict) and j.get('name') in ('unprivileged-test-A','unprivileged-test-B')]
+          require(len(matched)==2 and set(j['name'] for j in matched)=={'unprivileged-test-A','unprivileged-test-B'},'TEST_JOBS_NOT_UNIQUE')
+          for j in matched:
+              require(j.get('status')=='completed' and j.get('conclusion')=='success','TEST_JOB_FAILURE')
+              require(type(j.get('runner_id')) is int and j['runner_id']>0,'RUNNER_MISSING')
+          require(matched[0]['runner_id']!=matched[1]['runner_id'],'DUPLICATE_RUNNER_ID')
+          docs={s:read(root/('candidate-'+s)/('attestation-'+s+'.json')) for s in 'AB'}
+          digests=('twin_spec_digest','tool_policy_digest','twin_bridge_sha256','ag_file_sha256','integration_registry_sha256','memory_policy_sha256')
+          for s,obj in docs.items():
+              require(isinstance(obj,dict) and obj.get('schema')=='rumbo-twin-attestation/v4','INVALID_SCHEMA')
+              require(obj.get('repository')==repo and obj.get('commit')==sha,'WRONG_REPO_COMMIT')
+              require((obj.get('environment_role'),obj.get('environment_id'))==(('primary','A') if s=='A' else ('twin','B')),'WRONG_TWIN_IDENTITY')
+              require(obj.get('tests')=='PASS' and obj.get('working_tree_clean') is True,'INVALID_TEST_RESULT')
+              require(obj.get('python')=='3.13.17' and obj.get('runtime_version')=='3.13.17','RUNTIME_DRIFT')
+              require(obj.get('tests_command')=='python -m unittest discover -s tests -v','INVALID_TEST_COMMAND')
+              require(isinstance(obj.get('platform'),str) and obj['platform'].startswith('Linux-'),'PLATFORM_INVALID')
+              for key in digests:
+                  require(isinstance(obj.get(key),str) and re.fullmatch('[0-9a-f]{64}',obj[key]),'DIGEST_MISSING_'+key)
+          for key in ('schema','repository','commit','python','runtime_version','platform','tests','tests_command','working_tree_clean',*digests):
+              require(docs['A'][key]==docs['B'][key],'CROSS_HOST_STRICT_MISMATCH_'+key)
+          path=root/('candidate-'+side)/('attestation-'+side+'.json')
+          print('ISOLATED_SIGNER_PREFLIGHT_'+side+'=PASS')
+          print('CANDIDATE_SHA256_'+side+'='+hashlib.sha256(path.read_bytes()).hexdigest())
+          PY_EVIDENCE
+      - name: Sign only previously checked B subject
+        id: signed
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ runner.temp }}/candidate-B/attestation-B.json
+      - name: Verify B certificate and signed digest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh version | head -1 | python -c 'import re,sys;s=sys.stdin.read().strip();m=re.fullmatch(r"gh version (\\d+)\\.(\\d+)\\.(\\d+)(?: \\(.*\\))?",s);assert m and int(m[1])==2 and int(m[2])>=102,"UNPATCHED_GH"'
+          gh attestation verify "$RUNNER_TEMP/candidate-B/attestation-B.json" \
+            --bundle "${{ steps.signed.outputs.bundle-path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/twin-signer-isolated-review.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            --format json > "$RUNNER_TEMP/verified-B.json"
+          python - <<'PY_VERIFIED'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          digest=hashlib.sha256((root/'candidate-B/attestation-B.json').read_bytes()).hexdigest()
+          results=json.loads((root/'verified-B.json').read_text())
+          assert isinstance(results,list) and len(results)==1,'NO_SINGLE_RESULT'
+          v=results[0]['verificationResult']['statement']
+          assert len(v['subject'])==1 and v['subject'][0]['digest']['sha256']==digest,'WRONG_SUBJECT'
+          print('ISOLATED_SIGSTORE_B_VERIFIED=PASS')
+          print('SUBJECT_SHA256_B='+digest)
+          PY_VERIFIED
+      - name: Retain signed B evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: isolated-signed-B
+          path: |
+            ${{ runner.temp }}/candidate-B/attestation-B.json
+            ${{ runner.temp }}/verified-B.json
+            ${{ steps.signed.outputs.bundle-path }}
+          retention-days: 7
+          if-no-files-found: error
