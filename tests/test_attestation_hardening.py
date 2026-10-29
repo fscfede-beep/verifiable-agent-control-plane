@@ -9,16 +9,17 @@ from pathlib import Path
 BASE = {
     "schema": "rumbo-twin-attestation/v4",
     "repository": "fscfede-beep/verifiable-agent-control-plane",
-    "commit": "abc",
-    "python": "3.13",
-    "runtime_version": "3.13",
+    "branch": "test/twin-signer-isolated-review-20261029",
+    "commit": "a" * 40,
+    "python": "3.13.17",
+    "runtime_version": "3.13.17",
     "platform": "Linux-test",
-    "twin_spec_digest": "spec",
-    "tool_policy_digest": "policy",
-    "twin_bridge_sha256": "bridge",
-    "ag_file_sha256": "a",
-    "integration_registry_sha256": "b",
-    "memory_policy_sha256": "c",
+    "twin_spec_digest": "1" * 64,
+    "tool_policy_digest": "2" * 64,
+    "twin_bridge_sha256": "3" * 64,
+    "ag_file_sha256": "4" * 64,
+    "integration_registry_sha256": "5" * 64,
+    "memory_policy_sha256": "6" * 64,
     "working_tree_clean": True,
     "tests": "PASS",
     "tests_command": "python -m unittest discover -s tests -v",
@@ -57,7 +58,7 @@ class TestAttestationHardening(unittest.TestCase):
 
     def test_fail_for_required_drift(self):
         a = {**BASE, "environment_role": "primary", "environment_id": "A"}
-        b = {**BASE, "commit": "def", "environment_role": "twin", "environment_id": "B"}
+        b = {**BASE, "commit": "b" * 40, "environment_role": "twin", "environment_id": "B"}
         r = self.run_gate(a, b)
         self.assertEqual(r.returncode, 1)
         self.assertIn("FAIL-CLOSED", r.stdout)
