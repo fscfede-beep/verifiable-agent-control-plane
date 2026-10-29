@@ -1,0 +1,99 @@
+# Bounded experiment: GitHub-hosted A/B jobs on distinct VMs. NO SCHEDULE.
+# This does not establish cryptographic host provenance or production approval.
+name: Twin cross-host bounded pilot
+
+on:
+  push:
+    branches:
+      - test/twin-crosshost-bounded-20261029
+    paths:
+      - '.github/workflows/twin-crosshost-bounded-pilot.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: twin-crosshost-bounded-experiment-20261029
+  cancel-in-progress: false
+
+jobs:
+  twin-a:
+    name: Cross-host A candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.17'
+      - name: Execute isolated test suite and collect A attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role primary --id A --out "$RUNNER_TEMP/attestation-A.json"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "attestation-A.json"
+          obj = json.loads(path.read_text())
+          assert obj["environment_role"] == "primary"
+          assert obj["environment_id"] == "A"
+          assert obj["commit"] == os.environ["GITHUB_SHA"]
+          assert obj["tests"] == "PASS" and obj["working_tree_clean"] is True
+          print("ATTESTATION_A_FILE_SHA256="+hashlib.sha256(path.read_bytes()).hexdigest())
+          print("ATTESTATION_A_COMMIT="+obj["commit"])
+          print("RUNNER_A_IMAGE_OS="+os.environ.get("ImageOS",""))
+          print("RUNNER_A_IMAGE_VERSION="+os.environ.get("ImageVersion",""))
+          PY
+      - name: Upload individual A JSON evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: crosshost-A-attestation
+          path: ${{ runner.temp }}/attestation-A.json
+          retention-days: 7
+          if-no-files-found: error
+  twin-b:
+    name: Cross-host B candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.17'
+      - name: Execute isolated test suite and collect B attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role twin --id B --out "$RUNNER_TEMP/attestation-B.json"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "attestation-B.json"
+          obj = json.loads(path.read_text())
+          assert obj["environment_role"] == "twin"
+          assert obj["environment_id"] == "B"
+          assert obj["commit"] == os.environ["GITHUB_SHA"]
+          assert obj["tests"] == "PASS" and obj["working_tree_clean"] is True
+          print("ATTESTATION_B_FILE_SHA256="+hashlib.sha256(path.read_bytes()).hexdigest())
+          print("ATTESTATION_B_COMMIT="+obj["commit"])
+          print("RUNNER_B_IMAGE_OS="+os.environ.get("ImageOS",""))
+          print("RUNNER_B_IMAGE_VERSION="+os.environ.get("ImageVersion",""))
+          PY
+      - name: Upload individual B JSON evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: crosshost-B-attestation
+          path: ${{ runner.temp }}/attestation-B.json
+          retention-days: 7
+          if-no-files-found: error
