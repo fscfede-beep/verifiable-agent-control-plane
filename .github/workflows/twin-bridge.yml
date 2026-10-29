@@ -45,10 +45,30 @@ jobs:
 
       - name: Prepare isolated checkouts
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TWIN_SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          TWIN_SOURCE_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          TWIN_SOURCE_REPO: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
         run: |
           set -euo pipefail
-          git worktree add --detach "$RUNNER_TEMP/rumbo-twin-A" HEAD
-          git worktree add --detach "$RUNNER_TEMP/rumbo-twin-B" HEAD
+          # Reject forks until an explicitly reviewed fork-provenance policy exists.
+          test "$TWIN_SOURCE_REPO" = "$GITHUB_REPOSITORY"
+          [[ "$TWIN_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git check-ref-format --branch "$TWIN_SOURCE_BRANCH" >/dev/null
+          test "$(git rev-parse HEAD)" = "$TWIN_SOURCE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$TWIN_SOURCE_BRANCH" --jq '.object.sha')" = "$TWIN_SOURCE_SHA"
+          for twin in A B; do
+            clone="$RUNNER_TEMP/rumbo-twin-$twin"
+            # Independent .git directories let both twins name the same real branch.
+            git clone --quiet --no-local --no-hardlinks --no-checkout "$GITHUB_WORKSPACE" "$clone"
+            git -C "$clone" switch --quiet --create "$TWIN_SOURCE_BRANCH" "$TWIN_SOURCE_SHA"
+            git -C "$clone" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+            test "$(git -C "$clone" rev-parse HEAD)" = "$TWIN_SOURCE_SHA"
+            test "$(git -C "$clone" branch --show-current)" = "$TWIN_SOURCE_BRANCH"
+            test "$(git -C "$clone" config --get remote.origin.url)" = "https://github.com/$GITHUB_REPOSITORY.git"
+            test -z "$(git -C "$clone" status --porcelain --untracked-files=all)"
+          done
 
       - name: Independently validate and attest Twin A and Twin B
         shell: bash
@@ -94,8 +114,13 @@ jobs:
 
       - name: Run unchanged strict A/B equivalence gate
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TWIN_SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          TWIN_SOURCE_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
         run: |
           set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$TWIN_SOURCE_BRANCH" --jq '.object.sha')" = "$TWIN_SOURCE_SHA"
           python twin/attestation-gate.py \
             "$RUNNER_TEMP/A.attestation.json" \
             "$RUNNER_TEMP/B.attestation.json"
