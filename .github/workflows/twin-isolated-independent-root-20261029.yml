@@ -62,7 +62,8 @@ jobs:
           for side in A B; do
             mkdir -p "$RUNNER_TEMP/$side"
             gh run download "$signed_run" --repo "$repo" --name "isolated-signed-$side" --dir "$RUNNER_TEMP/$side"
-            test -s "$RUNNER_TEMP/$side/attestation-$side.json"
+            test -s "$RUNNER_TEMP/$side/candidate-$side/attestation-$side.json"
+            cp "$RUNNER_TEMP/$side/candidate-$side/attestation-$side.json" "$RUNNER_TEMP/$side/attestation-$side.json"
             python - "$RUNNER_TEMP/$side" "$side" <<'PY_BUNDLE'
           import pathlib,shutil,sys
           folder=pathlib.Path(sys.argv[1]);side=sys.argv[2]
