@@ -97,6 +97,15 @@ def main() -> int:
         print(json.dumps({"result": "FAIL-CLOSED", "reason": "missing_fields", "missing": missing}, indent=2))
         return 2
 
+    # v4 defines a closed contract: reject any undeclared claims.
+    unexpected = {
+        role: sorted(set(report) - set(REQUIRED))
+        for role, report in reports.items()
+    }
+    if any(unexpected.values()):
+        print(json.dumps({"result": "FAIL-CLOSED", "reason": "unexpected_fields", "fields": unexpected}, indent=2))
+        return 2
+
     if any(report["schema"] != SCHEMA for report in reports.values()):
         print(json.dumps({"result": "FAIL-CLOSED", "reason": "unsupported_schema"}, indent=2))
         return 2
