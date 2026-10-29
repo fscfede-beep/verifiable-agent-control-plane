@@ -1,0 +1,205 @@
+# Bounded experiment: GitHub-hosted A/B jobs on distinct VMs. NO SCHEDULE.
+# This does not establish cryptographic host provenance or production approval.
+name: Twin signed provenance one-shot experiment
+
+on:
+  push:
+    branches:
+      - test/twin-signed-provenance-review-20261029
+    paths:
+      - '.github/workflows/twin-signed-review.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: twin-signed-one-shot-20261029
+  cancel-in-progress: false
+
+jobs:
+  twin-a:
+    name: Cross-host A candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.17'
+      - name: Execute isolated test suite and collect A attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role primary --id A --out "$RUNNER_TEMP/attestation-A.json"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "attestation-A.json"
+          obj = json.loads(path.read_text())
+          assert obj["environment_role"] == "primary"
+          assert obj["environment_id"] == "A"
+          assert obj["commit"] == os.environ["GITHUB_SHA"]
+          assert obj["tests"] == "PASS" and obj["working_tree_clean"] is True
+          print("ATTESTATION_A_FILE_SHA256="+hashlib.sha256(path.read_bytes()).hexdigest())
+          print("ATTESTATION_A_COMMIT="+obj["commit"])
+          print("RUNNER_A_IMAGE_OS="+os.environ.get("ImageOS",""))
+          print("RUNNER_A_IMAGE_VERSION="+os.environ.get("ImageVersion",""))
+          PY
+      - name: Sign A evidence via GitHub OIDC / Sigstore
+        id: attest_a
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # verified v4 commit
+        with:
+          subject-path: ${{ runner.temp }}/attestation-A.json
+      - name: Verify genuine signed A evidence with patched GitHub CLI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh version
+          cli_version="$(gh version | head -1)"
+          python - "$cli_version" <<'PY_VERSION'
+          import re,sys
+          line=sys.argv[1]
+          m=re.fullmatch(r"gh version (\d+)\.(\d+)\.(\d+)(?: \(.*\))?",line)
+          if not m or int(m.group(1)) != 2 or int(m.group(2)) < 102:
+              raise SystemExit("GH_CLI_UNPATCHED_OR_UNSUPPORTED")
+          print("PATCHED_GH_CLI_CHECK=PASS")
+          PY_VERSION
+          gh attestation verify "$RUNNER_TEMP/attestation-A.json" \
+            --bundle "${{ steps.attest_a.outputs.bundle-path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/twin-signed-review.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --format json > "$RUNNER_TEMP/verified-A.json"
+          python - <<'PY_VERIFY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          artifact=root/'attestation-A.json'
+          results=json.loads((root/'verified-A.json').read_text())
+          assert isinstance(results,list) and len(results)>0, 'no verified results'
+          digest=hashlib.sha256(artifact.read_bytes()).hexdigest()
+          for result in results:
+              statement=result['verificationResult']['statement']
+              assert statement['predicateType']=='https://slsa.dev/provenance/v1'
+              assert len(statement['subject'])==1
+              assert statement['subject'][0]['digest']['sha256']==digest
+          print("SIGNED_VERIFICATION_A=PASS")
+          print("SIGNED_SUBJECT_A_SHA256="+digest)
+          PY_VERIFY
+      - name: Upload individual A JSON evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-crosshost-A
+          path: |
+            ${{ runner.temp }}/attestation-A.json
+            ${{ runner.temp }}/verified-A.json
+            ${{ steps.attest_a.outputs.bundle-path }}
+          retention-days: 7
+          if-no-files-found: error
+  twin-b:
+    name: Cross-host B candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.17'
+      - name: Execute isolated test suite and collect B attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check .
+          python -m unittest discover -s tests -v
+          python twin/collect_attestation.py --role twin --id B --out "$RUNNER_TEMP/attestation-B.json"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "attestation-B.json"
+          obj = json.loads(path.read_text())
+          assert obj["environment_role"] == "twin"
+          assert obj["environment_id"] == "B"
+          assert obj["commit"] == os.environ["GITHUB_SHA"]
+          assert obj["tests"] == "PASS" and obj["working_tree_clean"] is True
+          print("ATTESTATION_B_FILE_SHA256="+hashlib.sha256(path.read_bytes()).hexdigest())
+          print("ATTESTATION_B_COMMIT="+obj["commit"])
+          print("RUNNER_B_IMAGE_OS="+os.environ.get("ImageOS",""))
+          print("RUNNER_B_IMAGE_VERSION="+os.environ.get("ImageVersion",""))
+          PY
+      - name: Sign B evidence via GitHub OIDC / Sigstore
+        id: attest_b
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # verified v4 commit
+        with:
+          subject-path: ${{ runner.temp }}/attestation-B.json
+      - name: Verify genuine signed B evidence with patched GitHub CLI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh version
+          cli_version="$(gh version | head -1)"
+          python - "$cli_version" <<'PY_VERSION'
+          import re,sys
+          line=sys.argv[1]
+          m=re.fullmatch(r"gh version (\d+)\.(\d+)\.(\d+)(?: \(.*\))?",line)
+          if not m or int(m.group(1)) != 2 or int(m.group(2)) < 102:
+              raise SystemExit("GH_CLI_UNPATCHED_OR_UNSUPPORTED")
+          print("PATCHED_GH_CLI_CHECK=PASS")
+          PY_VERSION
+          gh attestation verify "$RUNNER_TEMP/attestation-B.json" \
+            --bundle "${{ steps.attest_b.outputs.bundle-path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/twin-signed-review.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --format json > "$RUNNER_TEMP/verified-B.json"
+          python - <<'PY_VERIFY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          artifact=root/'attestation-B.json'
+          results=json.loads((root/'verified-B.json').read_text())
+          assert isinstance(results,list) and len(results)>0, 'no verified results'
+          digest=hashlib.sha256(artifact.read_bytes()).hexdigest()
+          for result in results:
+              statement=result['verificationResult']['statement']
+              assert statement['predicateType']=='https://slsa.dev/provenance/v1'
+              assert len(statement['subject'])==1
+              assert statement['subject'][0]['digest']['sha256']==digest
+          print("SIGNED_VERIFICATION_B=PASS")
+          print("SIGNED_SUBJECT_B_SHA256="+digest)
+          PY_VERIFY
+      - name: Upload individual B JSON evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-crosshost-B
+          path: |
+            ${{ runner.temp }}/attestation-B.json
+            ${{ runner.temp }}/verified-B.json
+            ${{ steps.attest_b.outputs.bundle-path }}
+          retention-days: 7
+          if-no-files-found: error
