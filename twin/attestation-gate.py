@@ -7,6 +7,8 @@ from pathlib import Path
 
 REQUIRED = (
     "schema",
+    "environment_role",
+    "environment_id",
     "repository",
     "commit",
     "python",
@@ -60,11 +62,16 @@ def main() -> int:
         print(json.dumps({"result": "FAIL-CLOSED", "reason": "invalid_environment_role", "roles": roles}, indent=2))
         return 2
 
+    ids = {"A": a.get("environment_id"), "B": b.get("environment_id")}
+    if ids != {"A": "A", "B": "B"}:
+        print(json.dumps({"result": "FAIL-CLOSED", "reason": "invalid_environment_id", "ids": ids}, indent=2))
+        return 2
+
     if any(report["tests"] != "PASS" or report["working_tree_clean"] is not True for report in reports.values()):
         print(json.dumps({"result": "FAIL-CLOSED", "reason": "environment_not_verified"}, indent=2))
         return 2
 
-    checked = tuple(key for key in REQUIRED if key != "schema")
+    checked = tuple(key for key in REQUIRED if key not in ("schema", "environment_role", "environment_id"))
     mismatches = {key: {"A": a[key], "B": b[key]} for key in checked if a[key] != b[key]}
 
     result = "PASS" if not mismatches else "FAIL-CLOSED"
