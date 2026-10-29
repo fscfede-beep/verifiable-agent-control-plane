@@ -62,6 +62,20 @@ def main() -> int:
         print("FAIL-CLOSED: test suite did not pass; no attestation written")
         return test_code
 
+    # Tests run after the initial clean-tree check: revalidate the final state.
+    final_status, final_status_code = run("git", "status", "--porcelain", "--untracked-files=all")
+    if final_status_code != 0 or final_status:
+        print("FAIL-CLOSED: working tree changed during test suite; no attestation written")
+        return 2
+
+    final_remote, final_remote_code = run("git", "config", "--get", "remote.origin.url")
+    final_commit, final_commit_code = run("git", "rev-parse", "HEAD")
+    final_branch, final_branch_code = run("git", "branch", "--show-current")
+    if (final_remote_code != 0 or final_commit_code != 0 or final_branch_code != 0
+            or final_remote != remote or final_commit != commit or final_branch != branch):
+        print("FAIL-CLOSED: repository identity changed during test suite; no attestation written")
+        return 2
+
     report = {
         "schema": "rumbo-twin-attestation/v4",
         "environment_role": args.role,
