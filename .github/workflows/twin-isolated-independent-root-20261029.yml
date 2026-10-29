@@ -1,0 +1,109 @@
+# Single read-only GitHub-hosted audit of a PREEXISTING signed workflow run.
+name: Twin isolated signer independent TUF audit
+on:
+  push:
+    branches:
+      - test/twin-isolated-independent-root-20261029
+    paths:
+      - .github/workflows/twin-isolated-independent-root-20261029.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-existing-twin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 5e04edfd56df80acf783459aed7bc74c34ed3497
+          fetch-depth: 1
+      - name: Independent TUF root and Sigstore verification
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo='fscfede-beep/verifiable-agent-control-plane'
+          signed_sha='5e04edfd56df80acf783459aed7bc74c34ed3497'
+          signed_ref='refs/heads/test/twin-signer-isolated-review-20261029'
+          signed_run='40817111224'
+          signer="$repo/.github/workflows/twin-signer-isolated-review.yml"
+          test "$(git rev-parse HEAD)" = "$signed_sha"
+          gh version
+          gh version | head -1 | python -c 'import re,sys;s=sys.stdin.read().strip();m=re.fullmatch(r"gh version (\d+)\.(\d+)\.(\d+)(?: \(.*\))?",s);assert m and int(m[1])==2 and int(m[2])>=102,"UNPATCHED_GH"'
+          test "$(gh api "repos/$repo/git/ref/heads/test/twin-signer-isolated-review-20261029" --jq '.object.sha')" = "$signed_sha"
+          test "$(gh api "repos/$repo/actions/runs/$signed_run" --jq '.head_sha')" = "$signed_sha"
+          test "$(gh api "repos/$repo/actions/runs/$signed_run" --jq '.conclusion')" = success
+          test "$(gh api "repos/$repo" --jq '.id')" = '1356103408'
+          gh api "repos/$repo/actions/runs/$signed_run/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          python - <<'PY_JOBS'
+          import json,os,pathlib
+          j={x['id']:x for x in json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'jobs.json').read_text())['jobs']}
+          expected={123260663573:1000017965,123260663852:1000017966}
+          assert len(set(expected.values()))==2
+          for jid,rid in expected.items():
+              assert j[jid]['conclusion']=='success'
+              assert j[jid]['runner_id']==rid
+          print('INDEPENDENT_RUNNER_ID_API_CHECK=PASS')
+          PY_JOBS
+          gh attestation trusted-root > "$RUNNER_TEMP/root.jsonl"
+          test -s "$RUNNER_TEMP/root.jsonl"
+          gh attestation trusted-root --verify-only > "$RUNNER_TEMP/root-audit.log"
+          python - <<'PY_ROOT'
+          import json,os,pathlib
+          roots=(pathlib.Path(os.environ['RUNNER_TEMP'])/'root.jsonl').read_text().splitlines()
+          assert roots and all(isinstance(json.loads(x),dict) for x in roots if x.strip())
+          print('INDEPENDENT_SIGSTORE_TUF_ROOT=PASS')
+          PY_ROOT
+          for side in A B; do
+            mkdir -p "$RUNNER_TEMP/$side"
+            gh run download "$signed_run" --repo "$repo" --name "isolated-signed-$side" --dir "$RUNNER_TEMP/$side"
+            test -s "$RUNNER_TEMP/$side/attestation-$side.json"
+            python - "$RUNNER_TEMP/$side" "$side" <<'PY_BUNDLE'
+          import pathlib,shutil,sys
+          folder=pathlib.Path(sys.argv[1]);side=sys.argv[2]
+          found=list(folder.glob('*/attestation.json'))
+          assert len(found)==1, 'INVALID_BUNDLE_COUNT'
+          shutil.copyfile(found[0],folder/(side+'.bundle.json'))
+          PY_BUNDLE
+            gh attestation verify "$RUNNER_TEMP/$side/attestation-$side.json" \
+              --bundle "$RUNNER_TEMP/$side/$side.bundle.json" \
+              --custom-trusted-root "$RUNNER_TEMP/root.jsonl" \
+              --repo "$repo" \
+              --signer-workflow "$signer" \
+              --source-digest "$signed_sha" \
+              --source-ref "$signed_ref" \
+              --deny-self-hosted-runners \
+              --cert-oidc-issuer 'https://token.actions.githubusercontent.com' \
+              --format json > "$RUNNER_TEMP/$side/verified.json"
+            python - "$RUNNER_TEMP/$side" "$side" <<'PY_VERIFY'
+          import hashlib,json,pathlib,sys
+          folder=pathlib.Path(sys.argv[1]);side=sys.argv[2]
+          report=folder/('attestation-'+side+'.json')
+          digest=hashlib.sha256(report.read_bytes()).hexdigest()
+          checked=json.loads((folder/'verified.json').read_text())
+          assert isinstance(checked,list) and len(checked)==1
+          cert=checked[0]['verificationResult']['signature']['certificate']
+          assert str(cert['sourceRepositoryIdentifier'])=='1356103408'
+          statement=checked[0]['verificationResult']['statement']
+          assert statement['predicateType']=='https://slsa.dev/provenance/v1'
+          assert len(statement['subject'])==1
+          assert statement['subject'][0]['digest']['sha256']==digest
+          doc=json.loads(report.read_text())
+          assert doc['schema']=='rumbo-twin-attestation/v4'
+          assert doc['commit']=='5e04edfd56df80acf783459aed7bc74c34ed3497'
+          assert doc['environment_id']==side
+          assert doc['environment_role']==('primary' if side=='A' else 'twin')
+          assert doc['tests']=='PASS' and doc['working_tree_clean'] is True
+          print('INDEPENDENT_SIGSTORE_VERIFIED_'+side+'=PASS')
+          print('ARTIFACT_SHA256_'+side+'='+digest)
+          PY_VERIFY
+          done
+          python twin/attestation-gate.py "$RUNNER_TEMP/A/attestation-A.json" "$RUNNER_TEMP/B/attestation-B.json"
+          test "$(gh api "repos/$repo/git/ref/heads/test/twin-signer-isolated-review-20261029" --jq '.object.sha')" = "$signed_sha"
+          sha256sum "$RUNNER_TEMP/root.jsonl" | sed 's@.*/root.jsonl@ root.jsonl@'
+          echo 'ISOLATED_SIGNER_INDEPENDENT_TUF_A_B_PASS'
