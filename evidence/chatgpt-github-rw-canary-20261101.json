@@ -1,0 +1,25 @@
+{
+  "schema": "rumbo.github.same_chat.write_canary/v1",
+  "scope": "ISOLATED_REFERENCE_REPOSITORY_BRANCH_ONLY",
+  "objective": "Prove authenticated ChatGPT normal-chat GitHub connector can create/read Git branch and content with no Work mode",
+  "repository": "fscfede-beep/verifiable-agent-control-plane",
+  "branch": "audit/chatgpt-github-same-chat-rw-20261101-r1",
+  "base_sha": "97017a374f80c32688c6e67003ef6e93181b5ac8",
+  "action": "CONTENT_WRITE_READBACK",
+  "approval_boundary": "User-directed test; no main change or production execution",
+  "non_goals": [
+    "Does not prove write access to every GitHub repository",
+    "Does not override RUMBO-IA/rumbo-control-queue governor",
+    "Does not prove organization admin API or self-hosted CI runners"
+  ],
+  "checks_expected": [
+    "New branch only",
+    "File created only under evidence/",
+    "Exact file contents read back",
+    "main remains at base_sha",
+    "No tokens, keys or secrets"
+  ],
+  "external_cost_usd": 0,
+  "production_go": false,
+  "date_utc": "2026-11-01"
+}
