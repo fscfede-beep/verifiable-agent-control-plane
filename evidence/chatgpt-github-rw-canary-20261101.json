@@ -21,5 +21,14 @@
   ],
   "external_cost_usd": 0,
   "production_go": false,
-  "date_utc": "2026-11-01"
+  "date_utc": "2026-11-01",
+  "verification": {
+    "stage": "READ_MODIFY_WRITE_CAS",
+    "initial_commit_sha": "fe41b6ba3a55b6f3c398298da50567e74cfba78d",
+    "initial_blob_sha": "fdf588bf5ebe57421b2eb0680f7b6ae7b6206f33",
+    "observed_main_sha": "97017a374f80c32688c6e67003ef6e93181b5ac8",
+    "initial_diff": "1 commit, 1 added evidence file; main unaffected",
+    "policy": "No merge, no production, no secrets, no central governor override",
+    "verified_from": "ChatGPT normal chat GitHub connector"
+  }
 }
