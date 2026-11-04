@@ -6,6 +6,7 @@ from hashlib import sha256
 import json
 from typing import Any, Mapping
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 
 SCHEMA_VERSION = "1.0"
@@ -270,9 +271,22 @@ def save_state(state: CanonicalProblemState, path: str | Path) -> None:
     state.validate()
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    temporary = target.with_name(f".{target.name}.tmp")
-    temporary.write_text(state.to_json() + "\n", encoding="utf-8")
-    temporary.replace(target)
+    temporary = None
+    try:
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(state.to_json() + "\n")
+        temporary.replace(target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def load_state(path: str | Path) -> CanonicalProblemState:
