@@ -38,6 +38,15 @@ class TestUKRL(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             assert_fail_closed(report)
 
+    def test_expired_canonical_cannot_authorize_conflicting_fresh_evidence(self):
+        report = self.r.reconcile([
+            Claim("old", "deploy", "state", "GO", "github", "2026-01-01T00:00:00Z", True, "canonical", "sha:old"),
+            Claim("new", "deploy", "state", "HOLD", "memory", "2026-09-09T08:19:00Z", True, "verified", "mem:new"),
+        ], NOW, max_age_days=30)
+        self.assertEqual(report.resolutions[0].status, STATUS_CONFLICT)
+        with self.assertRaises(RuntimeError):
+            assert_fail_closed(report)
+
     def test_digest_is_deterministic(self):
         claims=[Claim("a","x","y","z","github","2026-09-09T08:00:00Z",True,"canonical","sha:a")]
         self.assertEqual(self.r.reconcile(claims, NOW).canonical_digest(), self.r.reconcile(claims, NOW).canonical_digest())
