@@ -92,6 +92,7 @@ class UKRL:
                 canonical_verified = [
                     c for c in bucket
                     if c.source in self.canonical_sources and c.verified and bool(c.evidence_ref)
+                    and max(0.0, (now_epoch - c.observed_epoch()) / 86400.0) <= max_age_days
                 ]
                 canonical_values = {c.value for c in canonical_verified}
                 if len(canonical_values) == 1:
