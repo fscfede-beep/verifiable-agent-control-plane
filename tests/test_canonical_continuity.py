@@ -67,6 +67,21 @@ class CanonicalContinuityTests(unittest.TestCase):
             self.assertEqual(restored.to_dict(), self.state.to_dict())
             self.assertFalse(path.with_name(".state.json.tmp").exists())
 
+    def test_disk_store_does_not_follow_preexisting_temp_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "state.json"
+            sentinel = root / "sentinel.txt"
+            sentinel.write_text("sentinel-unchanged", encoding="utf-8")
+            old_temp = root / ".state.json.tmp"
+            try:
+                old_temp.symlink_to(sentinel)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlinks unavailable: {exc}")
+            save_state(self.state, target)
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "sentinel-unchanged")
+            self.assertEqual(load_state(target).digest, self.state.digest)
+
     def test_disk_store_rejects_missing_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "missing.json"
