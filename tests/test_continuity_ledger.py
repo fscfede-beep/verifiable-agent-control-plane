@@ -61,13 +61,29 @@ class ContinuityLedgerTests(unittest.TestCase):
 
     def test_mixed_problem_ids_fail_closed(self) -> None:
         ledger = ContinuityLedger().append(self.state0, "discover")
+        other = replace(
+            self.state1,
+            problem_id="different-ledger-problem",
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/different-ledger-problem/1",
+        )
+        event = ContinuityEvent.build(
+            state=other,
+            action="jump",
+            previous_event_hash=ledger.events[-1].event_hash,
+        )
+        bad = ContinuityLedger(ledger.events + (event,))
+        with self.assertRaisesRegex(CanonicalProblemError, "problem mismatch"):
+            bad.verify()
+
+    def test_validly_hashed_revision_gap_is_rejected(self) -> None:
+        ledger = ContinuityLedger().append(self.state0, "discover")
         event = ContinuityEvent.build(
             state=self.state2,
             action="jump",
             previous_event_hash=ledger.events[-1].event_hash,
         )
         bad = ContinuityLedger(ledger.events + (event,))
-        with self.assertRaisesRegex(CanonicalProblemError, "problem mismatch"):
+        with self.assertRaisesRegex(CanonicalProblemError, "revision gap"):
             bad.verify()
 
     def test_revision_gap_is_rejected(self) -> None:
