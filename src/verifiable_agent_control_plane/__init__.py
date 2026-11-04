@@ -15,6 +15,8 @@ from .core import (
     verify_transition,
 )
 from .canonical import (
+    BRAND,
+    BRAND_NAMESPACE,
     CanonicalProblemError,
     CanonicalProblemState,
     Evidence,
@@ -23,6 +25,10 @@ from .canonical import (
     resume_state,
     save_state,
     load_state,
+)
+from .ledger import (
+    ContinuityEvent,
+    ContinuityLedger,
 )
 from .security import (
     ActionGrant,
@@ -41,6 +47,8 @@ from .security import (
 
 __all__ = [
     "ActionGrant",
+    "BRAND",
+    "BRAND_NAMESPACE",
     "CanonicalProblemError",
     "CanonicalProblemState",
     "ApprovalAnchor",
@@ -49,6 +57,8 @@ __all__ = [
     "ContextArtifact",
     "Evidence",
     "ControlPlaneError",
+    "ContinuityEvent",
+    "ContinuityLedger",
     "Decision",
     "Delegation",
     "EffectResult",

@@ -22,8 +22,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: twin-bridge
-  cancel-in-progress: false
+  group: twin-bridge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   twin:

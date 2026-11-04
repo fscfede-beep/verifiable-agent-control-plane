@@ -9,7 +9,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+BRAND = "RUMBO IA"
+BRAND_NAMESPACE = "RUMBO-IA"
 
 _STATUS_VALUES = {
     "DISCOVERY",
@@ -90,6 +92,8 @@ class CanonicalProblemState:
     title: str
     objective: str
     status: str
+    brand: str = BRAND
+    brand_record_id: str | None = None
     revision: int = 0
     created_at: str = field(default_factory=_utcnow)
     updated_at: str = field(default_factory=_utcnow)
@@ -150,6 +154,8 @@ class CanonicalProblemState:
         )
         state = cls(
             problem_id=str(data["problem_id"]),
+            brand=str(data.get("brand", BRAND)),
+            brand_record_id=data.get("brand_record_id"),
             title=str(data["title"]),
             objective=str(data["objective"]),
             status=str(data["status"]),
@@ -250,6 +256,8 @@ def advance(
         raise CanonicalProblemError("invalid canonical status")
     updated = CanonicalProblemState(
         problem_id=state.problem_id,
+        brand=state.brand,
+        brand_record_id=state.brand_record_id,
         title=state.title,
         objective=state.objective,
         status=status,
