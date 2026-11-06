@@ -96,7 +96,7 @@ jobs:
             --out "/tmp/${{ matrix.environment_id }}.attestation.json"
 
       - name: Upload attestation
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: twin-attestation-${{ matrix.environment_id }}
           path: /tmp/${{ matrix.environment_id }}.attestation.json
