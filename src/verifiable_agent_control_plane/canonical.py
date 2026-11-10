@@ -283,7 +283,7 @@ def advance(
     updated = CanonicalProblemState(
         problem_id=state.problem_id,
         brand=state.brand,
-        brand_record_id=state.brand_record_id,
+        brand_record_id=state.brand_record_id.rsplit("/", 1)[0] + "/" + str(state.revision + 1),
         title=state.title,
         objective=state.objective,
         status=status,
