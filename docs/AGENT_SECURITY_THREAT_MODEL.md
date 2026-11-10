@@ -48,6 +48,11 @@ All tests use local in-memory targets. No third-party service, credential, produ
 | S24 | Evaluation epoch rollback | Materialization epoch cannot move backward from the accepted decision | rollback denied before effect |
 | S25 | Expiry during decision-to-effect gap | Security is re-evaluated at the materialization epoch | advanced epoch at/after expiry denied |
 | S26 | Drift hidden by time advancement | Only epoch advancement is relaxed; all other security fields remain exact | non-time drift still denied |
+| S27 | Requester principal-type collision | Grant binds requester principal type in addition to ID and tenant | same ID/tenant under another type denied |
+| S28 | Executor principal-type collision | Delegation binds executor principal type | executor with same ID/tenant under another type denied |
+| S29 | Approval requester-type replay | Approval and anchor bind requester principal type | approval issued to another requester type denied |
+| S30 | Unbound principal-type authority | Authority artifacts require explicit principal-type bindings at evaluation | missing type binding denied fail-closed |
+| S31 | Verifier principal-type collision | Approval evidence and anchor bind verifier principal type | verifier type substitution denied |
 
 ## Decision model
 
@@ -63,7 +68,7 @@ All tests use local in-memory targets. No third-party service, credential, produ
 - approval digest when present;
 - caller-supplied evaluation epoch.
 
-A context artifact may be attacker-controlled and may influence an upstream model's proposal, but it is never consulted as an authority source. Permission comes only from explicit grants and delegation. Grant, delegation, and approval tenant bindings are mandatory at evaluation time: constructor-level `None` values are retained only for compatibility and are rejected fail-closed. Explicit cross-tenant execution remains possible when both delegator and delegate tenant bindings match the supplied principals. For approval-required actions, a non-empty verification digest is insufficient by itself. The verifier must be distinct from both requester and executor, and `SecurityPolicy.approval_anchors` must contain an exact `ApprovalAnchor(verifier_principal_id, verifier_tenant_id, action, intent_digest, verification_digest, requester_principal_id, requester_tenant_id)` match. Requester binding is mandatory at evaluation time: constructor-level `None` values are retained only for compatibility and are rejected fail-closed. The anchor is a trusted-policy evidence binding, not a cryptographic signature or proof of external authorship.
+A context artifact may be attacker-controlled and may influence an upstream model's proposal, but it is never consulted as an authority source. Permission comes only from explicit grants and delegation. Authority matching uses the complete principal tuple `(principal_id, principal_type, tenant_id)`: grants bind the requester tuple, delegations bind both requester and executor tuples, approvals bind the requester tuple, and approval evidence/anchors bind verifier type as well as verifier ID and tenant. Constructor-level `None` values for authority tenant/type bindings are retained only for compatibility and are rejected fail-closed at evaluation. Explicit cross-tenant execution remains possible when the complete delegator and delegate bindings match the supplied principals. For approval-required actions, a non-empty verification digest is insufficient by itself. The verifier must be distinct from both requester and executor under the same complete principal tuple, and `SecurityPolicy.approval_anchors` must contain an exact requester/verifier identity, action, intent-digest, and verification-digest match. The anchor is a trusted-policy evidence binding, not a cryptographic signature or proof of external authorship or identity authentication.
 
 ## Execution model
 
