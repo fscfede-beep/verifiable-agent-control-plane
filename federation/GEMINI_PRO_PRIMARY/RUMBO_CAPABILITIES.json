@@ -1,0 +1,21 @@
+{
+  "schema": "rumbo-capabilities-v1",
+  "node_id": "GEMINI_PRO_PRIMARY",
+  "source_run_id": "run_gem_fed_20260926_2031",
+  "source_timestamp": "2026-09-26T20:31:30Z",
+  "provenance": "source_reported_by_gemini_handoff",
+  "independent_verification": "PARTIAL",
+  "capabilities": {
+    "gmail": {"status":"AVAILABLE","read":"YES","write":"NO","execute":"NO","verification":"SOURCE_REPORTED"},
+    "calendar": {"status":"AVAILABLE","read":"YES","write":"NO","execute":"NO","verification":"SOURCE_REPORTED"},
+    "google_drive": {"status":"UNAVAILABLE","read":"NO","write":"NO","execute":"NO","verification":"SOURCE_REPORTED"},
+    "github": {"status":"UNAVAILABLE","read":"NO","write":"NO","execute":"NO","verification":"SOURCE_REPORTED_FOR_GEMINI_NODE_ONLY"},
+    "web_browsing": {"status":"UNAVAILABLE","read":"NO","write":"NO","execute":"NO","verification":"SOURCE_REPORTED"},
+    "cli_terminal": {"status":"UNAVAILABLE","read":"NO","write":"NO","execute":"NO","verification":"SOURCE_REPORTED"}
+  },
+  "truth_boundary": [
+    "These capabilities describe the reported Gemini session, not ChatGPT/OpenAI connector capabilities.",
+    "ChatGPT independently verified GitHub access from its own node; this does not contradict Gemini's sandbox limits."
+  ],
+  "hash": "sha256:7417bdbf0c5e810555f7f1cb1b07e3760302c2878b72401593086f1e2a188fc4"
+}

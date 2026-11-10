@@ -1,0 +1,43 @@
+{
+  "schema": "rumbo-federation-gate-lock-v1",
+  "node_id": "GEMINI_PRO_PRIMARY",
+  "source_run_id": "run_gem_fed_20260926_2047",
+  "source_timestamp_utc": "2026-09-26T20:47:26Z",
+  "active_gate": "AWAITING_INDEPENDENT_READBACK_CAPABILITY",
+  "overall_state": "SUSPENDED_FOR_VERIFICATION",
+  "provenance": "source_reported_by_gemini_gate_status",
+  "reported_async_state": {
+    "branch": "federation/gemini-pro-primary",
+    "reported_head_sha_before_gate_append": "b95d42e8e36b595acd84eab2ca9236f76a5eae01",
+    "reported_artifact": "federation/GEMINI_PRO_PRIMARY/GEMINI_ROUNDTRIP_ACK_V1.json",
+    "reported_blob_sha": "53cbe92c39234906d4ed0f3cf1fdad04f613491c"
+  },
+  "verified_by_chatgpt_before_append": {
+    "branch_head_matched_reported_head": true,
+    "branch_ahead_of_main_by": 4,
+    "branch_behind_main_by": 0,
+    "main_base_sha": "97017a374f80c32688c6e67003ef6e93181b5ac8"
+  },
+  "federation_status": {
+    "handoff_gemini_to_chatgpt": "PASS",
+    "chatgpt_github_persistence": "PASS",
+    "chatgpt_readback": "PASS",
+    "gemini_ack": "PASS",
+    "gemini_independent_remote_readback": "NOT_AVAILABLE",
+    "round_trip": "ACK_RECEIVED_BUT_REMOTE_READBACK_NOT_PROVEN",
+    "end_to_end_federation": "NOT_YET_PROVEN",
+    "control_plane_promotion": "NO",
+    "merge": "NO",
+    "production": "NO"
+  },
+  "fail_closed_gate": {
+    "trust_based_mutation_rejected": true,
+    "halt_mutation_until_verified_read": true,
+    "unlock_condition": "INDEPENDENT_REMOTE_READBACK_BRIDGE"
+  },
+  "pending_verification_targets": {
+    "pre_gate_head_sha": "b95d42e8e36b595acd84eab2ca9236f76a5eae01",
+    "ack_blob_sha": "53cbe92c39234906d4ed0f3cf1fdad04f613491c"
+  },
+  "next_safe_action": "Do not request further Gemini mutation. Preserve NOT_YET_PROVEN until Gemini gains an independently verifiable read surface for the persisted branch state."
+}

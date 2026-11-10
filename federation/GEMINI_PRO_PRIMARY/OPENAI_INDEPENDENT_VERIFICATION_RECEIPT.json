@@ -1,0 +1,47 @@
+{
+  "schema": "rumbo-openai-independent-verification-receipt-v1",
+  "receipt_id": "openai-ack-gemini-run_gem_fed_20260926_2031-v1",
+  "verifier": "ChatGPT GPT-5.6 Sol (current session)",
+  "source_node": "GEMINI_PRO_PRIMARY",
+  "source_message_id": "run_gem_fed_20260926_2031",
+  "source_timestamp": "2026-09-26T20:31:30Z",
+  "repository": "fscfede-beep/verifiable-agent-control-plane",
+  "branch": "federation/gemini-pro-primary",
+  "main_base_sha": "97017a374f80c32688c6e67003ef6e93181b5ac8",
+  "verified": {
+    "repository_public": true,
+    "repository_default_branch": "main",
+    "chatgpt_repository_permission_admin": true,
+    "chatgpt_repository_permission_push": true,
+    "gemini_branch_absent_before_creation": true,
+    "branch_created_from_main": true,
+    "branch_initial_ahead_of_main_by": 0,
+    "branch_initial_behind_main_by": 0,
+    "existing_federation_pattern_branch": "federation/grok-build-primary",
+    "existing_grok_branch_ahead_of_main_by": 2,
+    "existing_grok_branch_behind_main_by": 0,
+    "control_queue_repository_visibility": "private",
+    "control_queue_default_branch": "main",
+    "control_queue_current_main_sha": "e15b1a6e83b33c4985676b9ba02dbdd27bab2b82",
+    "control_queue_pr_1448_head_sha": "8a367ff253c3884b0fc7503630142cecceb49e6c",
+    "control_queue_pr_1448_required_workflows_success": 3
+  },
+  "corrected_source_claims": [
+    {"source_claim":"RUMBO-IA/rumbo-control-queue CI is failing/persistent Linux runner failures","resolution":"NOT_ACCEPTED_AS_CURRENT_GLOBAL_STATE","evidence":"Current PR #1448 on exact main base e15b1a6e... has three completed successful workflows at head 8a367ff..."},
+    {"source_claim":"verifiable-agent-control-plane is canonical authority","resolution":"ROLE_SUPPORTED_BUT_SCOPE_LIMITED","evidence":"Repository README describes a sanitized public reference implementation and explicitly says it is not a private production control plane."}
+  ],
+  "not_independently_verified": [
+    "Gemini Gmail search result contents",
+    "Gemini Calendar capability",
+    "Gemini sandbox configuration",
+    "Gemini account identity binding",
+    "Gemini-side persistence",
+    "Direct Gemini-to-ChatGPT transport",
+    "End-to-end cross-provider federation"
+  ],
+  "round_trip_status": "ROUND_TRIP_PARTIAL",
+  "control_plane_promotion": "NO",
+  "end_to_end_federation": "NOT_YET_PROVEN",
+  "next_safe_action": "Persist these receipts on the isolated Gemini branch, verify exact readback and compare against main; do not merge.",
+  "hash": "sha256:6ebecd030ea9146cd695bbe235bb84c1e18f00bd91d16640ce3cfd67b65a7960"
+}

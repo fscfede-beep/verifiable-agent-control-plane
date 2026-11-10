@@ -1,0 +1,33 @@
+{
+  "schema": "rumbo-federation-v1",
+  "message_id": "run_gem_fed_20260926_2031",
+  "node_id": "GEMINI_PRO_PRIMARY",
+  "timestamp": "2026-09-26T20:31:30Z",
+  "intent": "federation_handoff_ingest",
+  "status": "SUBMITTED",
+  "evidence": [
+    {"source":"gemini_handoff","kind":"capability_scan","locator":"chat_handoff","observed_at":"2026-09-26T20:31:30Z","status":"source_reported"},
+    {"source":"chatgpt_github_connector","kind":"repository_readback","locator":"fscfede-beep/verifiable-agent-control-plane","status":"verified"},
+    {"source":"chatgpt_github_connector","kind":"control_queue_readback","locator":"RUMBO-IA/rumbo-control-queue","status":"verified"}
+  ],
+  "changes": [
+    "created isolated branch federation/gemini-pro-primary from exact main base",
+    "persisted source-reported Gemini capability boundary separately from independently verified GitHub state"
+  ],
+  "tests": ["identity","repository_readback","branch_base_identity","fail_closed_claim_separation"],
+  "risks": [
+    "Gemini runtime claims are not independently reproducible from ChatGPT",
+    "No direct Gemini-to-GitHub write path is proven",
+    "No end-to-end roundtrip back into the original Gemini session is proven"
+  ],
+  "next_safe_action": "independent Gemini readback of the persisted federation receipt, if Gemini gains a path to inspect the branch",
+  "unresolved_claims": [
+    "Gemini Gmail/Calendar read capability details",
+    "Gemini account/tool binding",
+    "Direct cross-provider authentication"
+  ],
+  "conflicts": [
+    "Gemini reported GitHub unavailable for its node; ChatGPT independently has GitHub admin/push access. This is NODE_CAPABILITY_DIVERGENCE, not an authority conflict."
+  ],
+  "hash": "sha256:de095bd148ca38bd55b8d7764a014bdcec33d2e432673ceca61de8200d77b1cd"
+}
