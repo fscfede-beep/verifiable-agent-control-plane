@@ -1,0 +1,32 @@
+{
+  "name": "rumbo-twin-plugins",
+  "interface": {
+    "displayName": "RUMBO Twin Plugins"
+  },
+  "plugins": [
+    {
+      "name": "twin-control-plane",
+      "source": {
+        "source": "local",
+        "path": "./plugins/twin-control-plane"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "twin-sync",
+      "source": {
+        "source": "local",
+        "path": "./plugins/twin-sync"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

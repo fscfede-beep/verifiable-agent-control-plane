@@ -1,0 +1,32 @@
+{
+  "name": "twin-control-plane",
+  "version": "0.1.0",
+  "description": "Fail-closed control and verification workflow for functional twin environments.",
+  "author": {
+    "name": "RUMBO IA"
+  },
+  "repository": "https://github.com/fscfede-beep/verifiable-agent-control-plane",
+  "license": "MIT",
+  "keywords": [
+    "twin",
+    "audit",
+    "verification",
+    "fail-closed"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Twin Control Plane",
+    "shortDescription": "Verify twin environment state before promotion.",
+    "longDescription": "Runs the intent, authority, preflight, execution, readback, falsification and closure workflow against a functional twin specification.",
+    "developerName": "RUMBO IA",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Run the twin equivalence preflight.",
+      "Audit the current twin state and fail closed on drift."
+    ]
+  }
+}
