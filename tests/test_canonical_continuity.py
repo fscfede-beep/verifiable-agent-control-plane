@@ -135,6 +135,8 @@ class CanonicalContinuityTests(unittest.TestCase):
     def test_secret_like_material_fails_closed(self) -> None:
         state = CanonicalProblemState(
             problem_id="problem-002",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-002/0",
             title="Unsafe",
             objective="Reject secrets",
             status="DISCOVERY",
@@ -154,6 +156,21 @@ class CanonicalContinuityTests(unittest.TestCase):
         )
         self.assertEqual(next_state.revision, self.state.revision + 1)
         self.assertEqual(next_state.problem_id, self.state.problem_id)
+
+    def test_brand_record_id_tracks_successive_revisions(self) -> None:
+        first = advance(self.state, status="RECONCILIATION")
+        self.assertEqual(first.revision, 1)
+        self.assertEqual(
+            first.brand_record_id,
+            f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/1",
+        )
+        second = advance(first, status="SOLVING")
+        self.assertEqual(second.revision, 2)
+        self.assertEqual(
+            second.brand_record_id,
+            f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/2",
+        )
+        second.validate()
 
     def test_resume_contains_only_actionable_state(self) -> None:
         next_state = advance(
