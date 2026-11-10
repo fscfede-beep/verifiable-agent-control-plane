@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from typing import Any, Mapping
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 
 SCHEMA_VERSION = "1.1"
@@ -296,3 +298,36 @@ def advance(
     )
     updated.validate()
     return updated
+
+
+def save_state(state: CanonicalProblemState, path: str | Path) -> None:
+    """Atomically persist a validated canonical state record."""
+    state.validate()
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(state.to_json() + "\n")
+        temporary.replace(target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def load_state(path: str | Path) -> CanonicalProblemState:
+    """Load and validate a canonical state record from disk."""
+    target = Path(path)
+    try:
+        payload = target.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CanonicalProblemError(f"cannot read canonical state: {target}") from exc
+    return CanonicalProblemState.from_json(payload)

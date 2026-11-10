@@ -38,11 +38,11 @@ jobs:
           - environment_role: twin
             environment_id: B
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -96,7 +96,7 @@ jobs:
             --out "/tmp/${{ matrix.environment_id }}.attestation.json"
 
       - name: Upload attestation
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: twin-attestation-${{ matrix.environment_id }}
           path: /tmp/${{ matrix.environment_id }}.attestation.json
@@ -107,22 +107,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: twin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
       - name: Download A attestation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twin-attestation-A
           path: attestations/A
 
       - name: Download B attestation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twin-attestation-B
           path: attestations/B
