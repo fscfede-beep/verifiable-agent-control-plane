@@ -26,6 +26,8 @@ ambiguous, or contradictory.
 Every durable problem record MUST contain:
 
 - `schema_version`
+- `brand`
+- `brand_record_id`
 - `problem_id`
 - `title`
 - `objective`
@@ -123,7 +125,9 @@ conversation context.
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
+  "brand": "RUMBO IA",
+  "brand_record_id": "RUMBO-IA/verifiable-agent-control-plane/openai-agents-python-4775/1",
   "problem_id": "openai-agents-python/4775",
   "title": "Pending-input Session append duplication",
   "objective": "Prevent duplicate logical input after a lost Session.add_items acknowledgement",

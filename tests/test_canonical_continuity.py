@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 
 from verifiable_agent_control_plane import (
+    BRAND,
+    BRAND_NAMESPACE,
     CanonicalProblemError,
     CanonicalProblemState,
     Evidence,
@@ -24,14 +26,40 @@ class CanonicalContinuityTests(unittest.TestCase):
         )
         self.state = CanonicalProblemState(
             problem_id="problem-001",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/0",
             title="Cross-chat continuity",
             objective="Resume the same problem safely in a new chat",
             status="EVIDENCE",
             evidence=(self.evidence,),
         )
 
+    def test_brand_record_revision_is_bound_to_state_revision(self) -> None:
+        bad = CanonicalProblemState(
+            problem_id="problem-001",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/99",
+            title="Cross-chat continuity",
+            objective="Resume safely",
+            status="EVIDENCE",
+        )
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "RUMBO IA record revision mismatch"
+        ):
+            bad.validate()
+
+    def test_missing_brand_fields_fail_closed_on_restore(self) -> None:
+        data = self.state.to_dict()
+        del data["brand"]
+        with self.assertRaisesRegex(
+            CanonicalProblemError, "missing required fields: brand"
+        ):
+            CanonicalProblemState.from_dict(data)
+
     def test_state_digest_is_stable_and_sha256_bound(self) -> None:
         self.assertEqual(self.state.digest, self.state.digest)
+        self.assertEqual(self.state.brand, BRAND)
+        self.assertTrue(self.state.brand_record_id.startswith(BRAND_NAMESPACE + "/"))
         self.assertTrue(self.state.digest.startswith("sha256:"))
         self.assertEqual(len(self.state.digest), 71)
 
@@ -107,6 +135,8 @@ class CanonicalContinuityTests(unittest.TestCase):
     def test_secret_like_material_fails_closed(self) -> None:
         state = CanonicalProblemState(
             problem_id="problem-002",
+            brand=BRAND,
+            brand_record_id=f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-002/0",
             title="Unsafe",
             objective="Reject secrets",
             status="DISCOVERY",
@@ -126,6 +156,21 @@ class CanonicalContinuityTests(unittest.TestCase):
         )
         self.assertEqual(next_state.revision, self.state.revision + 1)
         self.assertEqual(next_state.problem_id, self.state.problem_id)
+
+    def test_brand_record_id_tracks_successive_revisions(self) -> None:
+        first = advance(self.state, status="RECONCILIATION")
+        self.assertEqual(first.revision, 1)
+        self.assertEqual(
+            first.brand_record_id,
+            f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/1",
+        )
+        second = advance(first, status="SOLVING")
+        self.assertEqual(second.revision, 2)
+        self.assertEqual(
+            second.brand_record_id,
+            f"{BRAND_NAMESPACE}/verifiable-agent-control-plane/problem-001/2",
+        )
+        second.validate()
 
     def test_resume_contains_only_actionable_state(self) -> None:
         next_state = advance(

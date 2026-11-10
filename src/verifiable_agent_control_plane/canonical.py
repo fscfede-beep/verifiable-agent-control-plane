@@ -9,7 +9,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+BRAND = "RUMBO IA"
+BRAND_NAMESPACE = "RUMBO-IA"
 
 _STATUS_VALUES = {
     "DISCOVERY",
@@ -87,6 +89,8 @@ class Evidence:
 @dataclass(frozen=True)
 class CanonicalProblemState:
     problem_id: str
+    brand: str
+    brand_record_id: str
     title: str
     objective: str
     status: str
@@ -100,6 +104,14 @@ class CanonicalProblemState:
     next_actions: tuple[str, ...] = ()
 
     def validate(self) -> None:
+        if self.brand != BRAND:
+            raise CanonicalProblemError("canonical state must be registered under RUMBO IA")
+        if self.brand_record_id is None:
+            raise CanonicalProblemError("canonical state requires RUMBO IA record id")
+        if not self.brand_record_id.startswith(BRAND_NAMESPACE + "/"):
+            raise CanonicalProblemError("invalid RUMBO IA record id")
+        if self.brand_record_id.rsplit("/", 1)[-1] != str(self.revision):
+            raise CanonicalProblemError("RUMBO IA record revision mismatch")
         if self.status not in _STATUS_VALUES:
             raise CanonicalProblemError("invalid canonical status")
         if not all(isinstance(item, str) and item for item in (
@@ -148,8 +160,26 @@ class CanonicalProblemState:
             )
             for item in raw_evidence
         )
+        required = (
+            "problem_id",
+            "brand",
+            "brand_record_id",
+            "title",
+            "objective",
+            "status",
+            "revision",
+            "created_at",
+            "updated_at",
+        )
+        missing = [key for key in required if key not in data]
+        if missing:
+            raise CanonicalProblemError(
+                "canonical state missing required fields: " + ", ".join(missing)
+            )
         state = cls(
             problem_id=str(data["problem_id"]),
+            brand=str(data["brand"]),
+            brand_record_id=str(data["brand_record_id"]),
             title=str(data["title"]),
             objective=str(data["objective"]),
             status=str(data["status"]),
@@ -188,6 +218,8 @@ class CanonicalProblemState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": SCHEMA_VERSION,
+            "brand": self.brand,
+            "brand_record_id": self.brand_record_id,
             "problem_id": self.problem_id,
             "title": self.title,
             "objective": self.objective,
@@ -250,6 +282,8 @@ def advance(
         raise CanonicalProblemError("invalid canonical status")
     updated = CanonicalProblemState(
         problem_id=state.problem_id,
+        brand=state.brand,
+        brand_record_id=state.brand_record_id.rsplit("/", 1)[0] + "/" + str(state.revision + 1),
         title=state.title,
         objective=state.objective,
         status=status,
